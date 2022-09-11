@@ -32,13 +32,15 @@ def plot_timeseries(df, yval=None, show_afterhours=False):
         plot_line(df, yval, show_afterhours=show_afterhours)
 
 def plot_line(df, value='option value', show_afterhours=False):
-    fig = go.Figure(data=[go.Scatter(x=df.index, y=df[value])])
+    index = df['date'] if 'date' in df.columns else df.index
+    fig = go.Figure(data=[go.Scatter(x=index, y=df[value])])
     update_fig(fig, show_afterhours=show_afterhours)
 
 def plot_candles(df, value=None, show_afterhours=False):
     if not value:
         value = ['open', 'high', 'low', 'close']
-    fig = go.Figure(data=[go.Candlestick(x=df.index,
+    index = df['date'] if 'date' in df.columns else df.index
+    fig = go.Figure(data=[go.Candlestick(x=index,
             open=df[value[0]],
             high=df[value[1]],
             low=df[value[2]],

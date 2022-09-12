@@ -20,7 +20,7 @@ def update_fig(fig, show_afterhours=False):
     fig.update_layout(xaxis_rangeslider_visible=False)
     fig.show()
 
-def plot_timeseries(df, yval=None, show_afterhours=False):
+def plot_timeseries(df, yval=None, show_afterhours=True):
     ohlc = ['open', 'high', 'low', 'close']
     if np.in1d(df.columns, ohlc).sum() == 4:
         if not yval:
@@ -31,12 +31,12 @@ def plot_timeseries(df, yval=None, show_afterhours=False):
             yval = 'close'
         plot_line(df, yval, show_afterhours=show_afterhours)
 
-def plot_line(df, value='option value', show_afterhours=False):
+def plot_line(df, value='option value', show_afterhours=True):
     index = df['date'] if 'date' in df.columns else df.index
     fig = go.Figure(data=[go.Scatter(x=index, y=df[value])])
     update_fig(fig, show_afterhours=show_afterhours)
 
-def plot_candles(df, value=None, show_afterhours=False):
+def plot_candles(df, value=None, show_afterhours=True):
     if not value:
         value = ['open', 'high', 'low', 'close']
     index = df['date'] if 'date' in df.columns else df.index

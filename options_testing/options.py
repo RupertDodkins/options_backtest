@@ -54,6 +54,15 @@ def weekly_short_calls(df_minutely, percent_offset=5):
     return short_call
 
 def PMCC(df_minutely, long_offset=-5, short_offset=5):
+    """
+    simple combines weekly short calls and a leap with fixed offsets based on underlying opening price.
+    assumes that short strikes are always above leap strike which is unlikely
+      
+    :param df_minutely:
+    :param long_offset:
+    :param short_offset:
+    :return:
+    """
     leap_weekly = LEAPS(df_minutely, percent_offset=long_offset)[['weekly profit', 'running profit', 'date']]
     leap_weekly = leap_weekly.rename(
         columns={'weekly profit': 'leap weekly profit', 'running profit': 'leap running profit'})

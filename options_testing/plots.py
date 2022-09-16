@@ -1,7 +1,18 @@
 import plotly.graph_objects as go
 import numpy as np
 
-def update_fig(fig, show_afterhours=False):
+def update_fig(fig, pivots=[], show_afterhours=False):
+    for pivot in pivots:
+        fig.add_shape(type='line',
+                      x0=pivot[0],
+                      y0=pivot[1],
+                      x1=df.index[-1],
+                      y1=pivot[1],
+                      line=dict(color='RoyalBlue', dash='dashdot'),
+                      xref='x',
+                      yref='y'
+                      )
+
     if not show_afterhours:
         fig.update_xaxes(
             rangeslider_visible=True,
@@ -36,7 +47,7 @@ def plot_line(df, value='option value', show_afterhours=True):
     fig = go.Figure(data=[go.Scatter(x=index, y=df[value])])
     update_fig(fig, show_afterhours=show_afterhours)
 
-def plot_candles(df, value=None, show_afterhours=True):
+def plot_candles(df, value=None, pivots=[], show_afterhours=True):
     if not value:
         value = ['open', 'high', 'low', 'close']
     index = df['date'] if 'date' in df.columns else df.index
@@ -45,4 +56,4 @@ def plot_candles(df, value=None, show_afterhours=True):
             high=df[value[1]],
             low=df[value[2]],
             close=df[value[3]])])
-    update_fig(fig, show_afterhours=show_afterhours)
+    update_fig(fig, pivots=pivots, show_afterhours=show_afterhours)

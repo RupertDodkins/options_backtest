@@ -1,7 +1,9 @@
 import plotly.graph_objects as go
 import numpy as np
 
-def update_fig(fig, pivots=[], show_afterhours=False):
+def update_fig(fig, pivots=[], show_afterhours=False, log_y=False):
+    if log_y:
+        fig.update_yaxes(type="log")
     for pivot in pivots:
         fig.add_shape(type='line',
                       x0=pivot[0],
@@ -31,23 +33,23 @@ def update_fig(fig, pivots=[], show_afterhours=False):
     fig.update_layout(xaxis_rangeslider_visible=False)
     fig.show()
 
-def plot_timeseries(df, yval=None, show_afterhours=True):
+def plot(df, value=None, show_afterhours=True, log_y=False):
     ohlc = ['open', 'high', 'low', 'close']
     if np.in1d(df.columns, ohlc).sum() == 4:
-        if not yval:
-            yval = ohlc
-        plot_candles(df, yval, show_afterhours=show_afterhours)
+        if not value:
+            value = ohlc
+        plot_candles(df, value, show_afterhours=show_afterhours, log_y=log_y)
     else:
-        if not yval:
-            yval = 'close'
-        plot_line(df, yval, show_afterhours=show_afterhours)
+        if not value:
+            value = 'close'
+        plot_line(df, value, show_afterhours=show_afterhours, log_y=log_y)
 
-def plot_line(df, value='option value', show_afterhours=True):
+def plot_line(df, value='option value', show_afterhours=True, log_y=False):
     index = df['date'] if 'date' in df.columns else df.index
     fig = go.Figure(data=[go.Scatter(x=index, y=df[value])])
-    update_fig(fig, show_afterhours=show_afterhours)
+    update_fig(fig, show_afterhours=show_afterhours, log_y=log_y)
 
-def plot_candles(df, value=None, pivots=[], show_afterhours=True):
+def plot_candles(df, value=None, pivots=[], show_afterhours=True, log_y=False):
     if not value:
         value = ['open', 'high', 'low', 'close']
     index = df['date'] if 'date' in df.columns else df.index
@@ -56,4 +58,4 @@ def plot_candles(df, value=None, pivots=[], show_afterhours=True):
             high=df[value[1]],
             low=df[value[2]],
             close=df[value[3]])])
-    update_fig(fig, pivots=pivots, show_afterhours=show_afterhours)
+    update_fig(fig, pivots=pivots, show_afterhours=show_afterhours, log_y=log_y)

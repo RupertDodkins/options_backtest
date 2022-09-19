@@ -10,12 +10,12 @@ def vpNoDF(df):
     volume_prices = pd.Series(0, index=np.around(np.arange(_low - Step, _high + Step, Step), decimals=Precision))
     time_prices = volume_prices.copy()
     for index, state in df.iterrows():
-        _prices = np.around((state.High - state.Low) / Step , 0)
+        _prices = np.around((state.high - state.low) / Step , 0)
 
         # Evenly distribute the bar's volume over its range
-        volume_prices.loc[state.Low:state.High] += state.Volume / _prices
+        volume_prices.loc[state.low:state.high] += state.volume / _prices
         # Increment time at price
-        time_prices.loc[state.Low:state.High] += 1
+        time_prices.loc[state.low:state.high] += 1
 
     # Pandas only returns the 1st row of the max value,
     # so we need to reverse the series to find the other side

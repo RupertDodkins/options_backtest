@@ -29,11 +29,12 @@ def aggregate(df_minutely, freq='hourly'):
 
     grouped = df_minutely.groupby([getattr(times, g) for g in groups])
     close = grouped.close.last()
-    df_subsamp = pd.DataFrame(index=range(len(close)), columns=['open', 'high', 'low', 'close'])
+    df_subsamp = pd.DataFrame(index=range(len(close)), columns=['open', 'high', 'low', 'close', 'volume'])
     df_subsamp['open'] = np.array(grouped.open.first())
     df_subsamp['high'] = np.array(grouped.open.max())
     df_subsamp['low'] = np.array(grouped.open.min())
     df_subsamp['close'] = np.array(close)
+    df_subsamp['volume'] = np.array(grouped.volume.sum())
 
     indices = np.empty(len(close), dtype=datetime)
     for r, dt_tup in enumerate(zip(*[close.index.get_level_values(i) for i in range(len(groups))])):

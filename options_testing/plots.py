@@ -1,4 +1,5 @@
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 import numpy as np
 
 def update_fig(fig, pivots=[], show_afterhours=False, log_y=False):
@@ -59,3 +60,18 @@ def plot_candles(df, value=None, pivots=[], show_afterhours=True, log_y=False):
             low=df[value[2]],
             close=df[value[3]])])
     update_fig(fig, pivots=pivots, show_afterhours=show_afterhours, log_y=log_y)
+
+def plots(df_list, offsets):
+    fig = go.Figure(data=[go.Scatter(x=df_list[0]['date'],
+                                     y=df_list[0]['running profit'],
+                                     name=str(offsets[0]))])
+
+    for i in range(1, len(df_list)):
+        fig.add_scatter(x=df_list[i]['date'],
+                        y=df_list[i]['running profit'],
+                        name=str(offsets[i]))
+    update_fig(fig)
+
+def compare_final_profits(df_list, offsets):
+    plt.plot(offsets, [df['running profit'].iloc[-1] for df in df_list])
+    plt.show()

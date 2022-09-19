@@ -11,7 +11,7 @@ def get_option_history(spot_history, strike, expiration, volatility=53, risk_fre
     option_history = pd.DataFrame(index=spot_history.index,
                                   columns=['option value','intrinsic value', 'time value',
                                            'delta', 'gamma', 'theta', 'vega', 'rho', 'DTE'])
-    values = ['option value','intrinsic value', 'time value']
+    values = ['option value', 'intrinsic value', 'time value']
     greeks = ['delta', 'gamma', 'theta', 'vega', 'rho']
     for spot_date, spot_row in spot_history.iterrows():
         DTE = (expiration-spot_date).days
@@ -57,7 +57,7 @@ def PMCC(df_minutely, long_offset=-5, short_offset=5):
     """
     simple combines weekly short calls and a leap with fixed offsets based on underlying opening price.
     assumes that short strikes are always above leap strike which is unlikely
-      
+
     :param df_minutely:
     :param long_offset:
     :param short_offset:

@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from scipy import stats, signal
 
 def is_far_from_level(value, levels, df):
     ave = np.mean(df['high'] - df['low'])
@@ -30,4 +31,22 @@ def simple_pivots(df):
         if len(min_list) == 5 and is_far_from_level(current_min,pivots,df):
             pivots.append((low_range.idxmin(), current_min))
     return pivots
+
+def get_poc(df, window_size=300):
+    n_stride = len(df)-window_size
+    developing_poc = pd.DataFrame(index=df.index[window_size:], columns=['poc'])
+    for i in range(n_stride):
+        pkx, pky, _, _ = KDE_profile(df.iloc[i:i+window_size])
+        developing_poc.at[df.index[i+window_size],'poc'] = pkx[np.argmax(pky)]
+    return developing_poc
+
+
+def KDE_profile(df, kde_factor = 0.05, num_samples = 500):
+    kde = stats.gaussian_kde(df['close'], weights=df['volume'], bw_method=kde_factor)
+    xr = np.linspace(df['close'].min(), df['close'].max(), num_samples)
+    kdy = kde(xr)
+    peaks, _ = signal.find_peaks(kdy)
+    pkx = xr[peaks]
+    pky = kdy[peaks]
+    return pkx, pky, xr, kdy
 

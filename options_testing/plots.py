@@ -44,7 +44,7 @@ def plot_line(df, value='option value', show_afterhours=True, log_y=False):
     fig = go.Figure(data=[go.Scatter(x=index, y=df[value])])
     update_fig(fig, show_afterhours=show_afterhours, log_y=log_y)
 
-def plot_candles(df, value=None, pivots=[], show_afterhours=True, log_y=False, show_volume=True):
+def plot_candles(df, value=None, lines=[], pivots=[], show_afterhours=True, log_y=False, show_volume=True):
     if not value:
         value = ['open', 'high', 'low', 'close']
     index = df['date'] if 'date' in df.columns else df.index
@@ -61,6 +61,10 @@ def plot_candles(df, value=None, pivots=[], show_afterhours=True, log_y=False, s
             high=df[value[1]],
             low=df[value[2]],
             close=df[value[3]], showlegend=False), row=1, col=1)
+
+    if len(lines):
+        for line in lines:
+            fig.add_scatter(x=index, y=df[line], name=line)
 
     update_fig(fig, pivots=pivots, show_afterhours=show_afterhours, log_y=log_y)
 
@@ -81,3 +85,17 @@ def compare_final_profits(df_list, offsets):
 
 def volume_profile(df):
     px.histogram(df, x='volume', y='close', nbins=100, orientation='h').show()
+
+def get_dist_plot(c, v, kx, ky):
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(name='Vol Profile', x=c, y=v, nbinsx=150,
+                               histfunc='sum', histnorm='probability density',
+                               marker_color='#B0C4DE'))
+    fig.add_trace(go.Scatter(name='KDE', x=kx, y=ky, mode='lines', marker_color='#D2691E'))
+    return fig
+
+def plot_KDE(df, pkx, pky, xr, kdy):
+    pk_marker_args = dict(size=10)
+    fig = get_dist_plot(df['close'], df['volume'], xr, kdy)
+    fig.add_trace(go.Scatter(name="Peaks", x=pkx, y=pky, mode='markers', marker=pk_marker_args))
+    fig.show()

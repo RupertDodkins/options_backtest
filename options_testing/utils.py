@@ -10,7 +10,6 @@ def uniform_samp(df):
     jump_locs = np.where(diff != diff[0])[0].any()
     return jump_locs
 
-
 def aggregate(df_minutely, freq='hourly'):
     dt_args = ['year', 'month', 'day', 'hour', 'minute']
     dt_starts = {dta: s for dta, s in zip(dt_args, [1970, 1, 1, 9, 30])}
@@ -50,3 +49,10 @@ def aggregate(df_minutely, freq='hourly'):
         indices[r] = date
     df_subsamp.index = indices
     return df_subsamp
+
+def concat_dfs(main_df, indicator_df):
+    cols = indicator_df.columns
+    for col in cols:
+        main_df[col] = np.nan
+        main_df.loc[indicator_df.index, col] = indicator_df[col].array
+    return main_df

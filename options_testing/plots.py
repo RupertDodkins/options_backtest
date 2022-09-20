@@ -1,5 +1,6 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import plotly.express as px
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -43,20 +44,23 @@ def plot_line(df, value='option value', show_afterhours=True, log_y=False):
     fig = go.Figure(data=[go.Scatter(x=index, y=df[value])])
     update_fig(fig, show_afterhours=show_afterhours, log_y=log_y)
 
-def plot_candles(df, value=None, pivots=[], show_afterhours=True, log_y=False):
+def plot_candles(df, value=None, pivots=[], show_afterhours=True, log_y=False, show_volume=True):
     if not value:
         value = ['open', 'high', 'low', 'close']
     index = df['date'] if 'date' in df.columns else df.index
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+    if show_volume:
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                         vertical_spacing=0.03, row_width=[0.2, 0.7])
+        fig.add_trace(go.Bar(x=index, y=df['volume'], showlegend=False), row=2, col=1)
+    else:
+        fig = make_subplots(rows=1, cols=1, shared_xaxes=True,
+                        vertical_spacing=0.03)
 
     fig.add_trace(go.Candlestick(x=index,
             open=df[value[0]],
             high=df[value[1]],
             low=df[value[2]],
             close=df[value[3]], showlegend=False), row=1, col=1)
-
-    fig.add_trace(go.Bar(x=index, y=df['volume'], showlegend=False), row=2, col=1)
 
     update_fig(fig, pivots=pivots, show_afterhours=show_afterhours, log_y=log_y)
 
@@ -74,3 +78,6 @@ def plots(df_list, offsets):
 def compare_final_profits(df_list, offsets):
     plt.plot(offsets, [df['running profit'].iloc[-1] for df in df_list])
     plt.show()
+
+def volume_profile(df):
+    px.histogram(df, x='volume', y='close', nbins=100, orientation='h').show()

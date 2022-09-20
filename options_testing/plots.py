@@ -1,20 +1,13 @@
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import numpy as np
 
 def update_fig(fig, pivots=[], show_afterhours=False, log_y=False):
     if log_y:
         fig.update_yaxes(type="log")
-    for pivot in pivots:
-        fig.add_shape(type='line',
-                      x0=pivot[0],
-                      y0=pivot[1],
-                      x1=df.index[-1],
-                      y1=pivot[1],
-                      line=dict(color='RoyalBlue', dash='dashdot'),
-                      xref='x',
-                      yref='y'
-                      )
+    for y in pivots:
+        fig.add_hline(y=y, line_width=1, line_dash="dot", line_color='RoyalBlue')
 
     if not show_afterhours:
         fig.update_xaxes(
@@ -54,11 +47,17 @@ def plot_candles(df, value=None, pivots=[], show_afterhours=True, log_y=False):
     if not value:
         value = ['open', 'high', 'low', 'close']
     index = df['date'] if 'date' in df.columns else df.index
-    fig = go.Figure(data=[go.Candlestick(x=index,
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                        vertical_spacing=0.03, row_width=[0.2, 0.7])
+
+    fig.add_trace(go.Candlestick(x=index,
             open=df[value[0]],
             high=df[value[1]],
             low=df[value[2]],
-            close=df[value[3]])])
+            close=df[value[3]], showlegend=False), row=1, col=1)
+
+    fig.add_trace(go.Bar(x=index, y=df['volume'], showlegend=False), row=2, col=1)
+
     update_fig(fig, pivots=pivots, show_afterhours=show_afterhours, log_y=log_y)
 
 def plots(df_list, offsets):

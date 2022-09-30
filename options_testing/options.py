@@ -53,23 +53,30 @@ def weekly_short_calls(df_minutely, percent_offset=5):
     short_call['running profit'] = short_call['weekly profit'].cumsum()
     return short_call
 
-def short_calls_dynamic_POC(df):
-    short_call = concat_dfs(df, get_poc(df, 30))
+def short_calls_dynamic_POC(df, percent_offset=5, window=30):
+    short_call = concat_dfs(df, get_poc(df, window))
     short_call = short_call.rename(columns={'open': 'underlying open', 'high': 'underlying high',
                                             'low': 'underlying low', 'close': 'underlying close'})
     short_call['strike'] = short_call['poc'] * (1 + percent_offset / 100.)
     short_call['call open'] = np.nan
     short_call['call close'] = np.nan
-    short_call['weekly profit'] = np.nan
-    short_call['date'] = short_call.index
+    short_call['hourly profit'] = np.nan
+    short_call['date'] = pd.to_datetime(short_call.index)
     short_call = short_call.reset_index(drop=True)
-    for iw, (date, week) in enumerate(short_call.iterrows()):
-        bsm_open = op.black_scholes(K=week['strike'], St=week['underlying open'], r=3, t=5, v=53, type='c')
-        bsm_close = op.black_scholes(K=week['strike'], St=week['underlying close'], r=3, t=0, v=53, type='c')
-        short_call.at[iw, 'call open'] = bsm_open['value']['option value']
-        short_call.at[iw, 'call close'] = bsm_close['value']['option value']
-    short_call['weekly profit'] = short_call['call open'] - short_call['call close']
-    short_call['running profit'] = short_call['weekly profit'].cumsum()
+    short_call['week'] = short_call['date'].dt.week
+    g = short_call.groupby('week')
+    options_exp = g.date.last()
+    short_call = short_call.merge(options_exp, left_on='week', right_on='week')
+    short_call['dte'] = (short_call['date_y'] - short_call['date_x'])/pd.Timedelta(1.0,unit='D')
+    for ih, (date, hour) in enumerate(short_call.iterrows()):
+        bsm_open = op.black_scholes(K=hour['strike'], St=hour['underlying open'],
+                                    r=3, t=hour['dte']+1./24, v=53, type='c')
+        bsm_close = op.black_scholes(K=hour['strike'], St=hour['underlying close'],
+                                     r=3, t=hour['dte'], v=53, type='c')
+        short_call.at[ih, 'call open'] = bsm_open['value']['option value']
+        short_call.at[ih, 'call close'] = bsm_close['value']['option value']
+    short_call['hourly profit'] = short_call['call open'] - short_call['call close']
+    short_call['running profit'] = short_call['hourly profit'].cumsum()
     return short_call
 
 def PMCC(df_minutely, long_offset=-5, short_offset=5):

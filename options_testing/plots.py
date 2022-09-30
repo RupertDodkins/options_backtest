@@ -4,7 +4,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import numpy as np
 
-def update_fig(fig, pivots=[], show_afterhours=False, log_y=False):
+def update_fig(fig, pivots=[], show_afterhours=True, log_y=False):
     if log_y:
         fig.update_yaxes(type="log")
     for y in pivots:
@@ -68,16 +68,21 @@ def plot_candles(df, value=None, lines=[], pivots=[], show_afterhours=True, log_
 
     update_fig(fig, pivots=pivots, show_afterhours=show_afterhours, log_y=log_y)
 
-def plots(df_list, offsets):
+def plots(df_list, offsets, kwargs):
+    n_colors = len(offsets)
+    colors = px.colors.sample_colorscale("viridis", [n / (n_colors - 1) for n in range(n_colors)])
+
     fig = go.Figure(data=[go.Scatter(x=df_list[0]['date'],
                                      y=df_list[0]['running profit'],
-                                     name=str(offsets[0]))])
+                                     name=str(offsets[0]),
+                                     line_color=colors[0])])
 
     for i in range(1, len(df_list)):
         fig.add_scatter(x=df_list[i]['date'],
                         y=df_list[i]['running profit'],
-                        name=str(offsets[i]))
-    update_fig(fig)
+                        name=str(offsets[i]),
+                        line_color=colors[i])
+    update_fig(fig, **kwargs)
 
 def compare_final_profits(df_list, offsets):
     plt.plot(offsets, [df['running profit'].iloc[-1] for df in df_list])

@@ -67,8 +67,9 @@ def plot_candles(df, value=None, lines=[], pivots=[], show_afterhours=True, log_
             fig.add_scatter(x=index, y=df[line], name=line)
 
     update_fig(fig, pivots=pivots, show_afterhours=show_afterhours, log_y=log_y)
+    return fig
 
-def plots(df_list, offsets, kwargs):
+def plots(df_list, offsets, kwargs={}):
     n_colors = len(offsets)
     colors = px.colors.sample_colorscale("viridis", [n / (n_colors - 1) for n in range(n_colors)])
 
@@ -104,3 +105,22 @@ def plot_KDE(df, pkx, pky, xr, kdy):
     fig = get_dist_plot(df['close'], df['volume'], xr, kdy)
     fig.add_trace(go.Scatter(name="Peaks", x=pkx, y=pky, mode='markers', marker=pk_marker_args))
     fig.show()
+
+def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running profit', show_afterhours=False):
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    index = strategy_df['date'] if 'date' in strategy_df.columns else strategy_df.index
+    value = ['underlying open', 'underlying high', 'underlying low', 'underlying close']
+
+    fig.add_trace(go.Candlestick(x=index, open=strategy_df[value[0]], high=strategy_df[value[1]],
+                                 low=strategy_df[value[2]], close=strategy_df[value[3]], showlegend=False),
+                  secondary_y=False)
+    if len(lines):
+        for line in lines:
+            fig.add_scatter(x=index, y=strategy_df[line], name=line)
+
+    fig.add_trace(go.Scatter(x=index, y=strategy_df[metric], name=metric),
+                  secondary_y=True)
+    fig.update_yaxes(title_text="TSLA price", secondary_y=False)
+    fig.update_yaxes(title_text=metric, secondary_y=True)
+    update_fig(fig, show_afterhours=show_afterhours)
+

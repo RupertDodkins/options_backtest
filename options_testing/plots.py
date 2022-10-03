@@ -124,11 +124,28 @@ def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running profi
     fig.update_yaxes(title_text=metric, secondary_y=True)
     update_fig(fig, show_afterhours=show_afterhours)
 
-def scatter_heatmap(x, y):
-    H, xedges, yedges = np.histogram2d(x, y, bins=(200,50))
+def scatter_heatmap(x, y, corner=True):
+    if corner:
+        fig = make_subplots(rows=2, cols=2, row_heights=[0.7, 0.3], column_widths=[0.7, 0.3])
+    else:
+        fig = make_subplots(rows=1, cols=1)
+    H, xedges, yedges = np.histogram2d(x, y, bins=(200, 50))
     xcenters = (xedges[:-1] + xedges[1:]) / 2
     ycenters = (yedges[:-1] + yedges[1:]) / 2
-    fig = px.imshow(H.T, x=xcenters, y=ycenters, aspect='auto', color_continuous_scale='Blues')
-    fig.add_trace(go.Scatter(x=x, y=y, mode='markers', marker_size=5, line_color='black', opacity=0.5))
+    im = px.imshow(H.T, x=xcenters, y=ycenters, aspect='auto', color_continuous_scale='Blues')
+    fig.add_trace(im.data[0], row=1, col=1)
+    fig.layout.coloraxis = im.layout.coloraxis
+    fig.add_trace(go.Scatter(x=x, y=y, mode='markers', marker_size=5, line_color='black', opacity=0.5), row=1, col=1)
+
+    if corner:
+        hist = px.histogram(x, orientation='h')
+        fig.add_trace(hist.data[0], row=1, col=2)
+        hist = px.histogram(y)
+        fig.add_trace(hist.data[0], row=2, col=1)
+
+    fig.update_layout(
+        autosize=False,
+        width=800,
+        height=800)
     fig.show()
 

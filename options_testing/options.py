@@ -66,8 +66,8 @@ def short_calls_dynamic_POC(df, percent_offset=5, window=30):
     short_call['week'] = short_call['date'].dt.week
     g = short_call.groupby('week')
     options_exp = g.date.last()
-    short_call = short_call.merge(options_exp, left_on='week', right_on='week')
-    short_call['dte'] = (short_call['date_y'] - short_call['date_x'])/pd.Timedelta(1.0,unit='D')
+    short_call = short_call.merge(options_exp, left_on='week', right_on='week', suffixes=('', '_expiration'))
+    short_call['dte'] = (short_call['date_expiration'] - short_call['date'])/pd.Timedelta(1.0, unit='D')
     for ih, (date, hour) in enumerate(short_call.iterrows()):
         bsm_open = op.black_scholes(K=hour['strike'], St=hour['underlying open'],
                                     r=3, t=hour['dte']+1./24, v=53, type='c')

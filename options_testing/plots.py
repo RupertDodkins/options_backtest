@@ -124,3 +124,11 @@ def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running profi
     fig.update_yaxes(title_text=metric, secondary_y=True)
     update_fig(fig, show_afterhours=show_afterhours)
 
+def scatter_heatmap(x, y):
+    H, xedges, yedges = np.histogram2d(x, y, bins=(200,50))
+    xcenters = (xedges[:-1] + xedges[1:]) / 2
+    ycenters = (yedges[:-1] + yedges[1:]) / 2
+    fig = px.imshow(H.T, x=xcenters, y=ycenters, aspect='auto', color_continuous_scale='Blues')
+    fig.add_trace(go.Scatter(x=x, y=y, mode='markers', marker_size=5, line_color='black', opacity=0.5))
+    fig.show()
+

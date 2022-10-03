@@ -41,7 +41,7 @@ def get_poc(df, window_size=300):
     return developing_poc
 
 
-def KDE_profile(df, kde_factor = 0.05, num_samples = 500):
+def KDE_profile(df, kde_factor=0.05, num_samples=500):
     kde = stats.gaussian_kde(df['close'], weights=df['volume'], bw_method=kde_factor)
     xr = np.linspace(df['close'].min(), df['close'].max(), num_samples)
     kdy = kde(xr)

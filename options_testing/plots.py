@@ -126,22 +126,27 @@ def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running profi
 
 def scatter_heatmap(x, y, corner=True):
     if corner:
-        fig = make_subplots(rows=2, cols=2, row_heights=[0.7, 0.3], column_widths=[0.7, 0.3])
+        fig = make_subplots(rows=2, cols=2, row_heights=[0.7, 0.3], column_widths=[0.7, 0.3],
+                            shared_xaxes=True, shared_yaxes=True)
     else:
         fig = make_subplots(rows=1, cols=1)
-    H, xedges, yedges = np.histogram2d(x, y, bins=(200, 50))
+    H, xedges, yedges = np.histogram2d(x, y, bins=(200, 200))
     xcenters = (xedges[:-1] + xedges[1:]) / 2
     ycenters = (yedges[:-1] + yedges[1:]) / 2
-    im = px.imshow(H.T, x=xcenters, y=ycenters, aspect='auto', color_continuous_scale='Blues')
+    im = px.imshow(np.log(H.T), x=xcenters, y=ycenters, aspect='auto')  # log for the color scale
     fig.add_trace(im.data[0], row=1, col=1)
     fig.layout.coloraxis = im.layout.coloraxis
+    fig.layout.coloraxis.showscale = False
     fig.add_trace(go.Scatter(x=x, y=y, mode='markers', marker_size=5, line_color='black', opacity=0.5), row=1, col=1)
 
     if corner:
-        hist = px.histogram(x, orientation='h')
+        hist = px.histogram(y, orientation='h', nbins=200)
+
         fig.add_trace(hist.data[0], row=1, col=2)
-        hist = px.histogram(y)
+        fig.add_hline(y=y.mean(), line_width=1, line_dash="dot", line_color='RoyalBlue')
+        hist = px.histogram(x, nbins=200)
         fig.add_trace(hist.data[0], row=2, col=1)
+        # fig.add_vline(x=x.mean(), line_width=1, line_dash="dot", line_color='RoyalBlue')
 
     fig.update_layout(
         autosize=False,

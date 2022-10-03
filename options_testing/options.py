@@ -65,7 +65,7 @@ def short_calls_dynamic(df, percent_offset=5, poc_window=30):
     short_call['strike'] = short_call[guide] * (1 + percent_offset / 100.)
     short_call['call open'] = np.nan
     short_call['call close'] = np.nan
-    short_call['hourly profit'] = np.nan
+    short_call['hourly profit'] = 0
     short_call['date'] = pd.to_datetime(short_call.index)
     short_call = short_call.reset_index(drop=True)
     short_call['week'] = short_call['date'].dt.week
@@ -122,7 +122,7 @@ def iron_condor(df, long_offset=5, short_offset=5, wing_distance=1, poc_window=0
 
     df['ic open'] = 0
     df['ic close'] = 0
-    df['hourly profit'] = np.nan
+    df['hourly profit'] = 0
     df['date'] = pd.to_datetime(df.index)
     df = df.reset_index(drop=True)
     df['week'] = df['date'].dt.week

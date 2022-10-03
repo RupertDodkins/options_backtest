@@ -37,7 +37,7 @@ def get_poc(df, window_size=300):
     developing_poc = pd.DataFrame(index=df.index[window_size:], columns=['poc'])
     for i in range(n_stride):
         pkx, pky, _, _ = KDE_profile(df.iloc[i:i+window_size])
-        developing_poc.at[df.index[i+window_size],'poc'] = pkx[np.argmax(pky)]
+        developing_poc.at[df.index[i+window_size], 'poc'] = pkx[np.argmax(pky)]
     return developing_poc
 
 

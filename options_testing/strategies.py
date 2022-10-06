@@ -53,37 +53,6 @@ def weekly_short_calls(df_minutely, percent_offset=5):
     short_call['running profit'] = short_call['weekly profit'].cumsum()
     return short_call
 
-def short_calls_dynamic(df, percent_offset=5, poc_window=30):
-    if poc_window:
-        df = concat_dfs(df, get_poc(df, poc_window))
-        guide = 'poc'
-    else:
-        guide = 'underlying open'
-
-    short_call = df.rename(columns={'open': 'underlying open', 'high': 'underlying high',
-                                            'low': 'underlying low', 'close': 'underlying close'})
-    short_call['strike'] = short_call[guide] * (1 + percent_offset / 100.)
-    short_call['call open'] = np.nan
-    short_call['call close'] = np.nan
-    short_call['hourly profit'] = 0
-    short_call['date'] = pd.to_datetime(short_call.index)
-    short_call = short_call.reset_index(drop=True)
-    short_call['week'] = short_call['date'].dt.week
-    g = short_call.groupby('week')
-    options_exp = g.date.last()
-    short_call = short_call.merge(options_exp, left_on='week', right_on='week', suffixes=('', '_expiration'))
-    short_call['dte'] = (short_call['date_expiration'] - short_call['date'])/pd.Timedelta(1.0, unit='D')
-    for ih, (date, hour) in enumerate(short_call.iterrows()):
-        bsm_open = op.black_scholes(K=hour['strike'], St=hour['underlying open'],
-                                    r=3, t=hour['dte']+1./24, v=53, type='c')
-        bsm_close = op.black_scholes(K=hour['strike'], St=hour['underlying close'],
-                                     r=3, t=hour['dte'], v=53, type='c')
-        short_call.at[ih, 'call open'] = bsm_open['value']['option value']
-        short_call.at[ih, 'call close'] = bsm_close['value']['option value']
-    short_call['hourly profit'] = short_call['call open'] - short_call['call close']
-    short_call['running profit'] = short_call['hourly profit'].cumsum()
-    return short_call
-
 def PMCC(df_minutely, long_offset=-5, short_offset=5):
     """
     simple combines weekly short calls and a leap with fixed offsets based on underlying opening price.
@@ -104,7 +73,55 @@ def PMCC(df_minutely, long_offset=-5, short_offset=5):
     pmcc['total running profit'] = pmcc['leap running profit'] + pmcc['short calls running profit']
     return pmcc
 
-def iron_condor(df, long_offset=5, short_offset=5, wing_distance=1, poc_window=0):
+class ShortCalls():
+    def __init__(self, percent_offset=5):
+        self.percent_offset = percent_offset
+
+    def get_strikes(self, df, guide):
+        df['strike'] = df[guide] * (1 + self.percent_offset / 100.)
+        return df
+
+    def candle_profit(self, candle):
+        open = op.black_scholes(K=candle['strike'], St=candle['underlying open'],
+                                r=3, t=candle['dte']+1./24, v=53, type='c')
+        close = op.black_scholes(K=candle['strike'], St=candle['underlying close'],
+                                 r=3, t=candle['dte'], v=53, type='c')
+        return open['value']['option value'], close['value']['option value']
+
+class IronCondors():
+    def __init__(self, long_offset=5, short_offset=5, wing_distance=1):
+        self.long_offset = long_offset
+        self.short_offset = short_offset
+        self.wing_distance = wing_distance
+        self.legs = ['sell call strike', 'buy call strike', 'sell put strike', 'buy put strike']
+
+    def get_strikes(self, df, guide):
+        df['sell call strike'] = df[guide] * (1 + self.short_offset / 100.)
+        df['buy call strike'] = df['sell call strike'] * (1 + self.wing_distance / 100.)
+        df['sell put strike'] = df[guide] * (1 - self.long_offset / 100.)
+        df['buy put strike'] = df['sell put strike'] * (1 - self.wing_distance / 100.)
+        return df
+
+    def candle_profit(self, candle):
+        open, close = 0, 0
+        for leg in self.legs:
+            meta = leg.split(' ')
+            contract = meta[1][0]
+            money_gained = [-1, 1][meta[0] == 'sell']
+            bsm_open = op.black_scholes(
+                K=candle[leg], St=candle['underlying open'], r=3, t=candle['dte']+1./24, v=53, type=contract
+            )
+            bsm_close = op.black_scholes(
+                K=candle[leg], St=candle['underlying close'], r=3, t=candle['dte'], v=53, type=contract
+            )
+            open += money_gained * bsm_open['value']['option value']
+            close += money_gained * bsm_close['value']['option value']
+        return open, close
+
+def long_puts():
+    pass
+
+def measure_period_profit(df, strategy, poc_window=0):
     if poc_window:
         df = concat_dfs(df, get_poc(df, poc_window))
         guide = 'poc'
@@ -114,14 +131,10 @@ def iron_condor(df, long_offset=5, short_offset=5, wing_distance=1, poc_window=0
     df = df.rename(columns={'open': 'underlying open', 'high': 'underlying high',
                             'low': 'underlying low', 'close': 'underlying close'})
 
-    df['sell call strike'] = df[guide] * (1 + short_offset / 100.)
-    df['buy call strike'] = df['sell call strike'] * (1 + wing_distance / 100.)
-    df['sell put strike'] = df[guide] * (1 - long_offset / 100.)
-    df['buy put strike'] = df['sell put strike'] * (1 - wing_distance / 100.)
-    legs = ['sell call strike', 'buy call strike', 'sell put strike', 'buy put strike']
+    df = strategy.get_strikes(df, guide)
 
-    df['ic open'] = 0
-    df['ic close'] = 0
+    df['strategy open'] = 0
+    df['strategy close'] = 0
     df['hourly profit'] = 0
     df['date'] = pd.to_datetime(df.index)
     df = df.reset_index(drop=True)
@@ -130,19 +143,9 @@ def iron_condor(df, long_offset=5, short_offset=5, wing_distance=1, poc_window=0
     options_exp = g.date.last()
     df = df.merge(options_exp, left_on='week', right_on='week', suffixes=('', '_expiration'))
     df['dte'] = (df['date_expiration'] - df['date'])/pd.Timedelta(1.0, unit='D')
-    for ih, (date, hour) in enumerate(df.iterrows()):
-        for leg in legs:
-            meta = leg.split(' ')
-            contract = meta[1][0]
-            money_gained = [-1, 1][meta[0] == 'sell']
-            bsm_open = op.black_scholes(
-                K=hour[leg], St=hour['underlying open'], r=3, t=hour['dte']+1./24, v=53, type=contract
-            )
-            bsm_close = op.black_scholes(
-                K=hour[leg], St=hour['underlying close'], r=3, t=hour['dte'], v=53, type=contract
-            )
-            df.at[ih, 'ic open'] += money_gained * bsm_open['value']['option value']
-            df.at[ih, 'ic close'] += money_gained * bsm_close['value']['option value']
-    df['hourly profit'] = df['ic open'] - df['ic close']
+    for ih, (date, candle) in enumerate(df.iterrows()):
+        df.at[ih, 'strategy open'], df.at[ih, 'strategy close'] = strategy.candle_profit(candle)
+
+    df['hourly profit'] = df['strategy open'] - df['strategy close']
     df['running profit'] = df['hourly profit'].cumsum()
     return df

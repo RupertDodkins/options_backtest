@@ -74,19 +74,19 @@ def plots(df_list, offsets, kwargs={}):
     colors = px.colors.sample_colorscale("viridis", [n / (n_colors - 1) for n in range(n_colors)])
 
     fig = go.Figure(data=[go.Scatter(x=df_list[0]['date'],
-                                     y=df_list[0]['running profit'],
+                                     y=df_list[0]['running_profit'],
                                      name=str(offsets[0]),
                                      line_color=colors[0])])
 
     for i in range(1, len(df_list)):
         fig.add_scatter(x=df_list[i]['date'],
-                        y=df_list[i]['running profit'],
+                        y=df_list[i]['running_profit'],
                         name=str(offsets[i]),
                         line_color=colors[i])
     update_fig(fig, **kwargs)
 
 def compare_final_profits(df_list, offsets):
-    plt.plot(offsets, [df['running profit'].iloc[-1] for df in df_list])
+    plt.plot(offsets, [df['running_profit'].iloc[-1] for df in df_list])
     plt.show()
 
 def volume_profile(df):
@@ -106,10 +106,10 @@ def plot_KDE(df, pkx, pky, xr, kdy):
     fig.add_trace(go.Scatter(name="Peaks", x=pkx, y=pky, mode='markers', marker=pk_marker_args))
     fig.show()
 
-def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running profit', show_afterhours=False):
+def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running_profit', show_afterhours=False):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     index = strategy_df['date'] if 'date' in strategy_df.columns else strategy_df.index
-    value = ['underlying open', 'underlying high', 'underlying low', 'underlying close']
+    value = ['underlying_open', 'underlying_high', 'underlying_low', 'underlying_close']
 
     fig.add_trace(go.Candlestick(x=index, open=strategy_df[value[0]], high=strategy_df[value[1]],
                                  low=strategy_df[value[2]], close=strategy_df[value[3]], showlegend=False),
@@ -124,7 +124,7 @@ def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running profi
     fig.update_yaxes(title_text=metric, secondary_y=True)
     update_fig(fig, show_afterhours=show_afterhours)
 
-def scatter_heatmap(x, y, corner=True):
+def scatter_heatmap(x, y, corner=True, colorscheme='time'):
     if corner:
         fig = make_subplots(rows=2, cols=2, row_heights=[0.7, 0.3], column_widths=[0.7, 0.3],
                             shared_xaxes=True, shared_yaxes=True)

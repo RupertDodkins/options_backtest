@@ -135,11 +135,8 @@ class LongPuts():
 
 def get_start_price(df, g, expiration):
     options_create = g.underlying_open.first()
-    print(options_create)
-    print(df)
     df = df.merge(options_create, left_on=expiration, right_on=expiration, suffixes=('', '_b'))
     df = df.rename(columns={'underlying_open_b': 'start_price'})
-    print(df)
     return df
 
 def measure_period_profit(df, strategy, expiration='week', update_freq='candle', poc_window=0):
@@ -163,7 +160,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
             guide = 'poc'
         else:
             guide = 'underlying_open'
-    elif update_freq == 'week':
+    elif update_freq == 'once':
         df = concat_dfs(df, get_start_price(df, g, expiration))
         guide = 'start_price'
 

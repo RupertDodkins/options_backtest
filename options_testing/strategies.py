@@ -118,8 +118,20 @@ class IronCondors():
             close += money_gained * bsm_close['value']['option value']
         return open, close
 
-def long_puts():
-    pass
+class LongPuts():
+    def __init__(self, percent_offset=-5):
+        self.percent_offset = percent_offset
+
+    def get_strikes(self, df, guide):
+        df['strike'] = df[guide] * (1 + self.percent_offset / 100.)
+        return df
+
+    def candle_profit(self, candle):
+        open = op.black_scholes(K=candle['strike'], St=candle['underlying open'],
+                                r=3, t=candle['dte']+1./24, v=53, type='p')
+        close = op.black_scholes(K=candle['strike'], St=candle['underlying close'],
+                                 r=3, t=candle['dte'], v=53, type='p')
+        return open['value']['option value'], close['value']['option value']
 
 def measure_period_profit(df, strategy, poc_window=0):
     if poc_window:

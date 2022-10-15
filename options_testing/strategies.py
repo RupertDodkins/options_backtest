@@ -9,7 +9,7 @@ def get_option_history(spot_history, strike, expiration, volatility=53, risk_fre
     spot_history.index = pd.to_datetime(spot_history.index)
     expiration = datetime.strptime(expiration, "%m/%d/%Y")
     option_history = pd.DataFrame(index=spot_history.index,
-                                  columns=['option value','intrinsic value', 'time value',
+                                  columns=['option value', 'intrinsic value', 'time value',
                                            'delta', 'gamma', 'theta', 'vega', 'rho', 'DTE'])
     values = ['option value', 'intrinsic value', 'time value']
     greeks = ['delta', 'gamma', 'theta', 'vega', 'rho']
@@ -76,6 +76,7 @@ def PMCC(df_minutely, long_offset=-5, short_offset=5):
 class ShortCalls():
     def __init__(self, percent_offset=5):
         self.percent_offset = percent_offset
+        self.legs = ['strike']
 
     def get_strikes(self, df, guide):
         df['strike'] = df[guide] * (1 + self.percent_offset / 100.)

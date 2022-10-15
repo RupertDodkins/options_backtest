@@ -56,3 +56,4 @@ def concat_dfs(main_df, indicator_df):
         main_df[col] = np.nan
         main_df.loc[indicator_df.index, col] = indicator_df[col].array
     return main_df
+

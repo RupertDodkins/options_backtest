@@ -114,34 +114,65 @@ class ShortCalls():
                                      t=candle['dte'], v=53, type='c')['value']['option value']
         return open, close
 
+
 class IronCondors():
-    def __init__(self, long_offset=5, short_offset=5, wing_distance=1):
+    def __init__(self, long_offset=5, short_offset=5, wing_distance=1, use_historical=True):
         self.long_offset = long_offset
         self.short_offset = short_offset
         self.wing_distance = wing_distance
-        self.legs = ['sell call strike', 'buy call strike', 'sell put strike', 'buy put strike']
+        self.legs = ['sell_call_strike', 'buy_call_strike', 'sell_put_strike', 'buy_put_strike']
+        self.use_historical = use_historical
+        self.option_history = {}
 
     def get_strikes(self, df, guide):
-        df['sell call strike'] = df[guide] * (1 + self.short_offset / 100.)
-        df['buy call strike'] = df['sell call strike'] * (1 + self.wing_distance / 100.)
-        df['sell put strike'] = df[guide] * (1 - self.long_offset / 100.)
-        df['buy put strike'] = df['sell put strike'] * (1 - self.wing_distance / 100.)
+        df['sell_call_strike'] = df[guide] * (1 + self.short_offset / 100.)
+        df['buy_call_strike'] = df['sell_call_strike'] * (1 + self.wing_distance / 100.)
+        df['sell_put_strike'] = df[guide] * (1 - self.long_offset / 100.)
+        df['buy_put_strike'] = df['sell_put_strike'] * (1 - self.wing_distance / 100.)
+
+        if self.use_historical:
+            for index, row in df.iterrows():
+                # strikes_contract = 'p'
+                for i, leg in enumerate(self.legs):
+                    meta = leg.split('_')
+                    contract = meta[1][0]
+                    if i % 2 == 0:
+                        strikes = get_available_strikes(
+                            row['date'],
+                            row['date_expiration'], contract
+                        )
+                        print(i, row[leg], strikes)
+                        if len(strikes) == 0:  # use previous in the case of misssing data
+                            strikes = np.array([df.iloc[index - 1][leg]])
+
+                    df.at[index, leg] = strikes[np.argmin(np.abs(strikes - row[leg]))]
+
+        df['new_option'] = (df.sell_call_strike.diff() + df.date_expiration.diff() / pd.Timedelta(1.0,
+                                                                                                  unit='D')) != 0.  # + df.right.diff()
         return df
 
     def candle_profit(self, candle):
         open, close = 0, 0
         for leg in self.legs:
-            meta = leg.split(' ')
+            meta = leg.split('_')
             contract = meta[1][0]
             money_gained = [-1, 1][meta[0] == 'sell']
-            bsm_open = op.black_scholes(
-                K=candle[leg], St=candle['underlying_open'], r=3, t=candle['dte']+1./24, v=53, type=contract
-            )
-            bsm_close = op.black_scholes(
-                K=candle[leg], St=candle['underlying_close'], r=3, t=candle['dte'], v=53, type=contract
-            )
-            open += money_gained * bsm_open['value']['option value']
-            close += money_gained * bsm_close['value']['option value']
+            if self.use_historical:
+                if candle['new_option']:
+                    self.option_history[leg] = option_history(candle[leg], candle['date_expiration'],
+                                                              start=candle['date'], right_abrev=contract).droplevel(
+                        [0, 1, 2, 3])
+                leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']]['open'].array[0]
+                leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']]['close'].array[0]
+            else:
+                leg_open = op.black_scholes(
+                    K=candle[leg], St=candle['underlying_open'], r=3, t=candle['dte'] + 1. / 24, v=53, type=contract
+                )['value']['option value']
+                leg_close = op.black_scholes(
+                    K=candle[leg], St=candle['underlying_close'], r=3, t=candle['dte'], v=53, type=contract
+                )['value']['option value']
+            open += money_gained * leg_open
+            close += money_gained * leg_close
         return open, close
 
 class LongPuts():

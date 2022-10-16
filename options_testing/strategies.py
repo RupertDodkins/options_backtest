@@ -1,9 +1,14 @@
 from datetime import datetime
 import pandas as pd
-import opstrat as op
+from pandas.api.types import is_datetime64_any_dtype as is_datetime
+try:
+    import opstrat as op
+except ImportError:
+    print('No opstrat module found. Wont be able to use BS model')
 import numpy as np
 from technical_analysis import get_poc
 from utils import aggregate, concat_dfs
+
 
 def get_option_history(spot_history, strike, expiration, volatility=53, risk_free=3.2, option_type='c'):
     spot_history.index = pd.to_datetime(spot_history.index)
@@ -73,21 +78,41 @@ def PMCC(df_minutely, long_offset=-5, short_offset=5):
     pmcc['total running_profit'] = pmcc['leap running_profit'] + pmcc['short calls running_profit']
     return pmcc
 
+
 class ShortCalls():
-    def __init__(self, percent_offset=5):
+    def __init__(self, percent_offset=5, use_historical=True):
         self.percent_offset = percent_offset
+        self.use_historical = use_historical
+        self.option_history = None
         self.legs = ['strike']
 
     def get_strikes(self, df, guide):
         df['strike'] = df[guide] * (1 + self.percent_offset / 100.)
+
+        if self.use_historical:
+            for index, row in df.iterrows():
+                strikes = view_available_strikes(
+                    row['date'],
+                    row['date_expiration'], 'c'
+                )
+                df.at[index, 'strike'] = strikes[np.argmin(np.abs(strikes - row['strike']))]
+
+        df['new_option'] = (df.strike.diff() + df.date_expiration.diff() / pd.Timedelta(1.0, unit='D')) != 0.  # + df.right.diff()
         return df
 
     def candle_profit(self, candle):
-        open = op.black_scholes(K=candle['strike'], St=candle['underlying_open'],
-                                r=3, t=candle['dte']+1./24, v=53, type='c')
-        close = op.black_scholes(K=candle['strike'], St=candle['underlying_close'],
-                                 r=3, t=candle['dte'], v=53, type='c')
-        return open['value']['option value'], close['value']['option value']
+        if self.use_historical:
+            if candle['new_option']:
+                self.option_history = option_history(candle['strike'], candle['date_expiration'],
+                                                     start=candle['date']).droplevel([0, 1, 2, 3])
+            open = self.option_history[self.option_history.index == candle['date']]['open'].array[0]
+            close = self.option_history[self.option_history.index == candle['date']]['close'].array[0]
+        else:
+            open = op.black_scholes(K=candle['strike'], St=candle['underlying_open'], r=3,
+                                    t=candle['dte'] + 1. / 24, v=53, type='c')['value']['option value']
+            close = op.black_scholes(K=candle['strike'], St=candle['underlying_close'], r=3,
+                                     t=candle['dte'], v=53, type='c')['value']['option value']
+        return open, close
 
 class IronCondors():
     def __init__(self, long_offset=5, short_offset=5, wing_distance=1):
@@ -140,6 +165,18 @@ def get_start_price(df, g, expiration):
     df = df.rename(columns={'underlying_open_b': 'start_price'})
     return df
 
+def add_expirations(df, expiration='week'):
+    df['date'] = df.index if is_datetime(df.index) else pd.to_datetime(df.index)
+    df = df.reset_index(drop=True)
+    df[expiration] = getattr(df['date'].dt, expiration)
+    g = df.groupby(expiration)
+    options_exp = g.date.last()
+    options_exp.iloc[-1] += timedelta(days=4 - options_exp.iloc[-1].weekday())  # make final expiry a friday
+    df = df.merge(options_exp, left_on=expiration, right_on=expiration, suffixes=('', '_expiration'))
+    df['dte'] = (df['date_expiration'] - df['date'])/pd.Timedelta(1.0, unit='D')
+
+    return df, g
+
 def measure_period_profit(df, strategy, expiration='week', update_freq='candle', poc_window=0):
     df = df.rename(columns={'open': 'underlying_open', 'high': 'underlying_high',
                             'low': 'underlying_low', 'close': 'underlying_close'})
@@ -147,13 +184,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
     df['strategy_open'] = 0
     df['strategy_close'] = 0
     df['hourly_profit'] = 0
-    df['date'] = pd.to_datetime(df.index)
-    df = df.reset_index(drop=True)
-    df[expiration] = getattr(df['date'].dt, expiration)
-    g = df.groupby(expiration)
-    options_exp = g.date.last()
-    df = df.merge(options_exp, left_on=expiration, right_on=expiration, suffixes=('', '_expiration'))
-    df['dte'] = (df['date_expiration'] - df['date'])/pd.Timedelta(1.0, unit='D')
+    df, g = add_expirations(df, expiration)
 
     if update_freq == 'candle':
         if poc_window:
@@ -172,4 +203,5 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
 
     df['hourly_profit'] = df['strategy_open'] - df['strategy_close']
     df['running_profit'] = df['hourly_profit'].cumsum()
+
     return df

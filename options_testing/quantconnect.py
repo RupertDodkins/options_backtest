@@ -57,7 +57,8 @@ class QuantBookWrapper():
         tsla = tsla[tsla.index <= datetime.today().replace(hour=16, minute=0) - timedelta(days=3)]
         return tsla
 
-    def get_available_strikes(self, start=(2022, 8, 25), expiration=(2022,10,14), right_abrev='c'):
+    def get_available_strikes(self, start=(2022, 8, 25), expiration=(2022,10,14), right_abrev='c',
+                              split_correct=(2022, 8, 25)):
         # start = datetime(*start)
         # expiration = datetime(*expiration)
         expiration = expiration.replace(hour=0, minute=0)
@@ -70,6 +71,9 @@ class QuantBookWrapper():
             right = self.OptionRight.Put
 
         strikes = np.array([s.ID.StrikePrice for s in contract_symbols if s.ID.OptionRight == right and s.ID.Date == expiration])
+        if split_correct:
+            if start < datetime(*split_correct):
+                strikes /= 3
 
         return strikes
 
@@ -91,7 +95,11 @@ class QuantBookWrapper():
         options_start = get_available(start, right_abrev)
         scatter_heatmap(options_start['strike'].array, options_start['days_since_start'].dt.days.array)
 
-    def option_history(self, strike, expiry, start=(2022, 8, 25), right_abrev='c', res_abrev='h'):
+    def option_history(self, strike, expiry, start=(2022, 8, 25), right_abrev='c', res_abrev='h',
+                       split_correct=(2022, 8, 25)):
+        if split_correct:
+            if start < datetime(*split_correct):
+                strike *= 3
         expiry = expiry.replace(hour=0, minute=0)
         start = start.replace(hour=0, minute=0)
         contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)

@@ -16,7 +16,7 @@ def update_fig(fig, pivots=[], show_afterhours=True, log_y=False):
             rangebreaks=[
                 # NOTE: Below values are bound (not single values), ie. hide x to y
                 dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
-                dict(bounds=[16, 9.5], pattern="hour"),  # hide hours outside of 9.30am-4pm
+                dict(bounds=[16.1, 9.5], pattern="hour"),  # hide hours outside of 9.30am-4pm
                 # dict(values=["2020-12-25", "2021-01-01"])  # hide holidays (Christmas and New Year's, etc)
             ]
         )

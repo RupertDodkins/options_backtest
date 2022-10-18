@@ -1,13 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
+
 try:
     import opstrat as op
 except ImportError:
     print('No opstrat module found. Wont be able to use BS model')
 import numpy as np
 from technical_analysis import get_poc
-from utils import aggregate, concat_dfs
+from utils import aggregate, concat_dfs, get_start_price
 
 
 def get_option_history(spot_history, strike, expiration, volatility=53, risk_free=3.2, option_type='c'):
@@ -132,7 +133,6 @@ class IronCondors():
 
         if self.use_historical:
             for index, row in df.iterrows():
-                # strikes_contract = 'p'
                 for i, leg in enumerate(self.legs):
                     meta = leg.split('_')
                     contract = meta[1][0]
@@ -141,8 +141,7 @@ class IronCondors():
                             row['date'],
                             row['date_expiration'], contract
                         )
-                        print(i, row[leg], strikes)
-                        if len(strikes) == 0:  # use previous in the case of misssing data
+                        if len(strikes) == 0:  # use previous in the case of missing data
                             strikes = np.array([df.iloc[index - 1][leg]])
 
                     df.at[index, leg] = strikes[np.argmin(np.abs(strikes - row[leg]))]
@@ -190,12 +189,6 @@ class LongPuts():
                                  r=3, t=candle['dte'], v=53, type='p')
         return open['value']['option value'], close['value']['option value']
 
-def get_start_price(df, g, expiration):
-    options_create = g.underlying_open.first()
-    df = df.merge(options_create, left_on=expiration, right_on=expiration, suffixes=('', '_b'))
-    df = df.rename(columns={'underlying_open_b': 'start_price'})
-    return df
-
 def add_expirations(df, expiration='week'):
     df['date'] = df.index if is_datetime(df.index) else pd.to_datetime(df.index)
     df = df.reset_index(drop=True)
@@ -204,18 +197,17 @@ def add_expirations(df, expiration='week'):
     options_exp = g.date.last()
     options_exp.iloc[-1] += timedelta(days=4 - options_exp.iloc[-1].weekday())  # make final expiry a friday
     df = df.merge(options_exp, left_on=expiration, right_on=expiration, suffixes=('', '_expiration'))
-    df['dte'] = (df['date_expiration'] - df['date'])/pd.Timedelta(1.0, unit='D')
+    df['dte'] = (df['date_expiration'] - df['date']) / pd.Timedelta(1.0, unit='D')
 
     return df, g
 
 def measure_period_profit(df, strategy, expiration='week', update_freq='candle', poc_window=0):
     df = df.rename(columns={'open': 'underlying_open', 'high': 'underlying_high',
                             'low': 'underlying_low', 'close': 'underlying_close'})
-
     df['strategy_open'] = 0
     df['strategy_close'] = 0
     df['hourly_profit'] = 0
-    df, g = add_expirations(df, expiration)
+    df, g = add_expirations(df, expiration=expiration)
 
     if update_freq == 'candle':
         if poc_window:

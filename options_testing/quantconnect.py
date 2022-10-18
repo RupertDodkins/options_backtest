@@ -117,3 +117,8 @@ class QuantBookWrapper():
         history = self.qb.History(options[0], start, expiry + timedelta(days=1), resolution)
 
         return history
+
+if __name__ == "__main__":
+    qbw = QuantBookWrapper({'qb': QuantBook(),'Resolution': Resolution,'OptionRight': OptionRight})
+    tsla = qbw.get_tsla()
+    print(tsla)

@@ -92,7 +92,7 @@ class QuantBookWrapper():
         return df
 
     def view_available(self, start=(2022, 8, 25), right_abrev='c'):
-        options_start = get_available(start, right_abrev)
+        options_start = self.get_available(start, right_abrev)
         scatter_heatmap(options_start['strike'].array, options_start['days_since_start'].dt.days.array)
 
     def option_history(self, strike, expiry, start=(2022, 8, 25), right_abrev='c', res_abrev='h',

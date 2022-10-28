@@ -192,12 +192,15 @@ class LongPuts():
 def add_expirations(df, expiration='week'):
     df['date'] = df.index if is_datetime(df.index) else pd.to_datetime(df.index)
     df = df.reset_index(drop=True)
-    df[expiration] = getattr(df['date'].dt, expiration)
-    g = df.groupby(expiration)
+    df['week'] = df['date'].dt.week
+    df['year'] = df['date'].dt.year
+    if expiration == 'month':
+        df['month'] = df['week'] // 4
+    g = df.groupby(['year', expiration])
     options_exp = g.date.last()
     options_exp.iloc[-1] += timedelta(days=4 - options_exp.iloc[-1].weekday())  # make final expiry a friday
-    df = df.merge(options_exp, left_on=expiration, right_on=expiration, suffixes=('', '_expiration'))
-    df['dte'] = (df['date_expiration'] - df['date']) / pd.Timedelta(1.0, unit='D')
+    df = df.merge(options_exp, left_on=['year', expiration], right_on=['year', expiration], suffixes=('', '_expiration'))
+    df['dte'] = (df['date_expiration'] - df['date'])/pd.Timedelta(1.0, unit='D')
 
     return df, g
 

@@ -59,6 +59,6 @@ def concat_dfs(main_df, indicator_df):
 
 def get_start_price(df, g, expiration):
     options_create = g.underlying_open.first()
-    df = df.merge(options_create, left_on=expiration, right_on=expiration, suffixes=('', '_b'))
+    df = df.merge(options_create, left_on=['year' ,expiration], right_on=['year' ,expiration], suffixes=('', '_b'))
     df = df.rename(columns={'underlying_open_b': 'start_price'})
     return df

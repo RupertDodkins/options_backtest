@@ -59,8 +59,10 @@ class QuantBookWrapper():
 
     def get_available_strikes(self, start=(2022, 8, 25), expiration=(2022,10,14), right_abrev='c',
                               split_correct=(2022, 8, 25)):
-        # start = datetime(*start)
-        # expiration = datetime(*expiration)
+        if isinstance(start, tuple):
+            start = datetime(*start)
+        if isinstance(expiration, tuple):
+            expiration = datetime(*expiration)
         expiration = expiration.replace(hour=0, minute=0)
         if start.replace(hour=0, minute=0) == expiration:
             start -= timedelta(days=1)
@@ -78,7 +80,8 @@ class QuantBookWrapper():
         return strikes
 
     def get_available(self, start=(2022, 8, 25), right_abrev='c'):
-        start = datetime(*start)
+        if isinstance(start, tuple):
+            start = datetime(*start)
         contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)
         if right_abrev == 'c':
             right = self.OptionRight.Call
@@ -100,6 +103,10 @@ class QuantBookWrapper():
         if split_correct:
             if start < datetime(*split_correct):
                 strike *= 3
+        if isinstance(start, tuple):
+            start = datetime(*start)
+        if isinstance(expiry, tuple):
+            expiry = datetime(*expiry)
         expiry = expiry.replace(hour=0, minute=0)
         start = start.replace(hour=0, minute=0)
         contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)

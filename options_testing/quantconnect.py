@@ -99,9 +99,10 @@ class QuantBookWrapper():
         scatter_heatmap(options_start['strike'].array, options_start['days_since_start'].dt.days.array)
 
     def option_history(self, strike, expiry, start=(2022, 8, 25), right_abrev='c', res_abrev='h',
-                       split_correct=(2022, 8, 25)):
+                       split_correct=(2022, 8, 25), reduce_clutter=True):
         if split_correct:
-            if start < datetime(*split_correct):
+            split_correct = datetime(*split_correct)
+            if start < split_correct:
                 strike *= 3
         if isinstance(start, tuple):
             start = datetime(*start)
@@ -122,6 +123,13 @@ class QuantBookWrapper():
         options = [s for s in contract_symbols if s.ID.OptionRight == right and s.ID.StrikePrice == strike and s.ID.Date == expiry]
         assert len(options) == 1
         history = self.qb.History(options[0], start, expiry + timedelta(days=1), resolution)
+        if reduce_clutter:
+            history = history[['close', 'high', 'low', 'open']].droplevel([0,1,2,3])
+        if split_correct:
+            if start < split_correct:
+                history /= 3
+            if not reduce_clutter:
+                history['volume'] *= 9
 
         return history
 

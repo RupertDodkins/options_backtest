@@ -59,26 +59,71 @@ def weekly_short_calls(df_minutely, percent_offset=5):
     short_call['running_profit'] = short_call['weekly profit'].cumsum()
     return short_call
 
-def PMCC(df_minutely, long_offset=-5, short_offset=5):
-    """
-    simple combines weekly short calls and a leap with fixed offsets based on underlying_opening price.
-    assumes that short strikes are always above leap strike which is unlikely
 
-    :param df_minutely:
-    :param long_offset:
-    :param short_offset:
-    :return:
-    """
-    leap_weekly = LEAPS(df_minutely, percent_offset=long_offset)[['weekly profit', 'running_profit', 'date']]
-    leap_weekly = leap_weekly.rename(
-        columns={'weekly profit': 'leap weekly profit', 'running_profit': 'leap running_profit'})
-    short_call = weekly_short_calls(df_minutely, percent_offset=short_offset)[['weekly profit', 'running_profit']]
-    short_call = short_call.rename(
-        columns={'weekly profit': 'short calls weekly profit', 'running_profit': 'short calls running_profit'})
-    pmcc = pd.concat((leap_weekly, short_call), axis=1)
-    pmcc['total running_profit'] = pmcc['leap running_profit'] + pmcc['short calls running_profit']
-    return pmcc
+class PMCC():
+    def __init__(self, long_offset_start=5, short_offset_start=5, long_exp_start=12, short_exp_start=8,
+                 use_historical=True):
+        self.long_offset_start = long_offset_start
+        self.short_offset_start = short_offset_start
+        self.long_exp_start = long_exp_start
+        self.short_exp_start = short_exp_start
+        self.legs = ['sell_call_strike', 'buy_call_strike']
+        self.use_historical = use_historical
+        self.option_history = {}
 
+    def get_strikes(self, df, guide):
+        df['sell_call_strike'] = df[guide] + df[guide] * self.long_offset_start / 100.
+        df['buy_call_strike'] = df[guide] - df[guide] * self.short_offset_start / 100.
+
+        if self.use_historical:
+            for index, row in df.iterrows():
+                for i, leg in enumerate(self.legs):
+                    meta = leg.split('_')
+                    contract = meta[1][0]
+                    if i % 2 == 0:
+                        strikes = get_available_strikes(
+                            row['date'],
+                            row['date_expiration'], contract
+                        )
+                        if len(strikes) == 0:  # use previous in the case of misssing data
+                            strikes = np.array([df.iloc[index - 1][leg]])
+
+                    df.at[index, leg] = strikes[np.argmin(np.abs(strikes - row[leg]))]
+
+        df['new_option'] = (df.sell_call_strike.diff() + df.date_expiration.diff() / pd.Timedelta(1.0,
+                                                                                                  unit='D')) != 0.  # + df.right.diff()
+        return df
+
+    def candle_profit(self, candle, combine_legs=True):
+        if combine_legs:
+            open, close = 0, 0
+        else:
+            open, close = [], []
+        for leg in self.legs:
+            meta = leg.split('_')
+            contract = meta[1][0]
+            money_gained = [-1, 1][meta[0] == 'sell']
+            if self.use_historical:
+                if candle['new_option']:
+                    self.option_history[leg] = option_history(candle[leg], candle['date_expiration'],
+                                                              start=candle['date'], right_abrev=contract)
+                leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']]['open'].array[0]
+                leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']]['close'].array[0]
+            else:
+                leg_open = op.black_scholes(
+                    K=candle[leg], St=candle['underlying_open'], r=3, t=candle['dte'] + 1. / 24, v=53, type=contract
+                )['value']['option value']
+                leg_close = op.black_scholes(
+                    K=candle[leg], St=candle['underlying_close'], r=3, t=candle['dte'], v=53, type=contract
+                )['value']['option value']
+            leg_open *= money_gained
+            leg_close *= money_gained
+            if not combine_legs:
+                leg_open, leg_close = [leg_open], [leg_close]
+            open += leg_open
+            close += leg_close
+
+        return open, close
 
 class ShortCalls():
     def __init__(self, percent_offset=5, use_historical=True):

@@ -150,8 +150,11 @@ class IronCondors():
                                                                                                   unit='D')) != 0.  # + df.right.diff()
         return df
 
-    def candle_profit(self, candle):
-        open, close = 0, 0
+    def candle_profit(self, candle, combine_legs=True):
+        if combine_legs:
+            open, close = 0, 0
+        else:
+            open, close = [], []
         for leg in self.legs:
             meta = leg.split('_')
             contract = meta[1][0]
@@ -170,8 +173,13 @@ class IronCondors():
                 leg_close = op.black_scholes(
                     K=candle[leg], St=candle['underlying_close'], r=3, t=candle['dte'], v=53, type=contract
                 )['value']['option value']
-            open += money_gained * leg_open
-            close += money_gained * leg_close
+            leg_open *= money_gained
+            leg_close *= money_gained
+            if not combine_legs:
+                leg_open, leg_close = [leg_open], [leg_close]
+            open += leg_open
+            close += leg_close
+
         return open, close
 
 class LongPuts():
@@ -204,7 +212,9 @@ def add_expirations(df, expiration='week'):
 
     return df, g
 
-def measure_period_profit(df, strategy, expiration='week', update_freq='candle', poc_window=0):
+
+def measure_period_profit(df, strategy, expiration='week', update_freq='candle', poc_window=0,
+                          combine_legs=False):
     df = df.rename(columns={'open': 'underlying_open', 'high': 'underlying_high',
                             'low': 'underlying_low', 'close': 'underlying_close'})
     df['strategy_open'] = 0
@@ -223,11 +233,25 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
         guide = 'start_price'
 
     df = strategy.get_strikes(df, guide)
-
+    if not combine_legs:
+        legs = [l.split('_strike')[0] for l in strategy.legs]
+        for leg in legs:
+            df[leg + '_open'] = 0
+            df[leg + '_close'] = 0
     for ih, (date, candle) in enumerate(df.iterrows()):
-        df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strategy.candle_profit(candle)
+        if combine_legs:
+            df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strategy.candle_profit(candle,
+                                                                                             combine_legs=True)
+        else:
+            legs_open, legs_close = strategy.candle_profit(candle, combine_legs=False)
+            df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = np.sum(legs_open), np.sum(legs_close)
+            for leg, open, close in zip(legs, legs_open, legs_close):
+                df.at[ih, leg + '_open'] = open
+                df.at[ih, leg + '_close'] = close
 
-    df['hourly_profit'] = df['strategy_open'] - df['strategy_close']
+    df['hourly_profit'] = -df['strategy_close'].diff()
+    # df['hourly_profit'][df['new_option']] = df['strategy_open'] - df['strategy_close']
+    df.loc[df.new_option.array, 'hourly_profit'] = df['strategy_open'] - df['strategy_close']
     df['running_profit'] = df['hourly_profit'].cumsum()
 
     return df

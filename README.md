@@ -22,9 +22,26 @@ not values when accounting for split </s> <br/> <br/>
 
 <s>Use historical volatility as guide for IC range</s> <br/> <br/>
 
-Test simple PMCC and covered calls
+<s>Test simple PMCC</s> <br/> <br/>
+
+<s>Fix date_expiration not being updated in PMCC</s> <br/> <br/>
 
 Use implied volatility as a guide for IC range?
+Could use this strategy as a simple way of calculating 
+https://quant.stackexchange.com/questions/27714/how-to-compute-30-60-90-day-implied-volatility
+Or could use an object store and transfer from backtest (would have to determine beforehand 
+which strikes I cared about) https://www.quantconnect.com/forum/discussion/11120/how-to-save-dataframes-in-research-to-objectstore/p1
+Quantconnect issue on IV in qb research envs
+https://github.com/QuantConnect/Lean/issues/3083
+All issues https://www.quantconnect.com/forum/sitemap.xml
+
+Update get_strikes to only compute strikes once per option (current it updates once per hour)
+
+Fix pre August 31, 2020 split values 
+
+Run Monte Carlo on PMCC
+
+Test covered calls
 
 Do post requests from quantconnect to a flask server app?
 

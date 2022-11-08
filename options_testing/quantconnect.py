@@ -146,6 +146,12 @@ class QuantBookWrapper():
 
         return history
 
+    def compare_chain_prices(self, start, expiration):
+        strikes = self.get_available_strikes(start=start, expiration=expiration)
+        strikes.sort()
+        opens = [qbw.option_history(s, datetime(*start), start=datetime(*expiration)).iloc[0]['open'] for s in strikes]
+        plt.plot(strikes, opens)
+
 if __name__ == "__main__":
     qbw = QuantBookWrapper({'qb': QuantBook(),'Resolution': Resolution,'OptionRight': OptionRight})
     tsla = qbw.get_tsla()

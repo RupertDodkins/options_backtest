@@ -103,17 +103,22 @@ class QuantBookWrapper():
 
     def option_history(self, strike, expiry, start=(2022, 8, 25), right_abrev='c', res_abrev='h',
                        split_correct=(2022, 8, 25), reduce_clutter=True):
-        if split_correct:
-            split_correct = datetime(*split_correct)
-            if start < split_correct:
-                strike *= 3
         if isinstance(start, tuple):
             start = datetime(*start)
         if isinstance(expiry, tuple):
             expiry = datetime(*expiry)
+        if split_correct:
+            split_correct = datetime(*split_correct)
+            if start < split_correct:
+                strike *= 3
         expiry = expiry.replace(hour=0, minute=0)
         start = start.replace(hour=0, minute=0)
         contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)
+        i = 1
+        while len(contract_symbols) == 0:
+            start -= timedelta(days=i)
+            contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)
+            i += 1
         if right_abrev == 'c':
             right = self.OptionRight.Call
         else:
@@ -124,6 +129,11 @@ class QuantBookWrapper():
             raise NotImplementedError
 
         options = [s for s in contract_symbols if s.ID.OptionRight == right and s.ID.StrikePrice == strike and s.ID.Date == expiry]
+        if len(options) == 0:
+            print('empty options', f'strike: {strike}, expiry: {expiry}, start: {start}, right_abrev: {right_abrev}, res_abrev: {res_abrev}')
+            df = self.get_available(start)
+            df = df[df['expiry'] == expiry].sort_values('strike')
+            print('all options at that expiry\n', df)
         assert len(options) == 1
         history = self.qb.History(options[0], start, expiry + timedelta(days=1), resolution)
         if reduce_clutter:

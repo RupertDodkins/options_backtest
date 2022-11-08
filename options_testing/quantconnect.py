@@ -90,8 +90,11 @@ class QuantBookWrapper():
 
         options = [(s.ID.Date, s.ID.StrikePrice) for s in contract_symbols if s.ID.OptionRight == right]
         df = pd.DataFrame(data=options, columns=['datetime', 'strike'])
+        if len(df) == 0:
+            print(f'No options found on {start} for some reason')
+            return None
         df['days_since_start'] = df['datetime'] - start
-
+        df = df.sort_values('strike').sort_values('days_since_start')
         return df
 
     def view_available(self, start=(2022, 8, 25), right_abrev='c'):

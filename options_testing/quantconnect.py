@@ -27,18 +27,12 @@ class QuantBookWrapper():
 
     def get_available_strikes(self, start=(2022, 8, 25), expiration=(2022,10,14), right_abrev='c',
                               split_correct=(2022, 8, 25)):
-        if isinstance(start, tuple):
-            start = datetime(*start)
-        if isinstance(expiration, tuple):
-            expiration = datetime(*expiration)
+        start, expiration = format_dates(start, expiration)
         expiration = expiration.replace(hour=0, minute=0)
         if start.replace(hour=0, minute=0) == expiration:
             start -= timedelta(days=1)
-        contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)
-        if right_abrev == 'c':
-            right = self.OptionRight.Call
-        else:
-            right = self.OptionRight.Put
+        contract_symbols = self.get_contract_symbols(start)
+        right = self.OptionRight.Call if right_abrev == 'c' else self.OptionRight.Put
 
         strikes = np.array([s.ID.StrikePrice for s in contract_symbols if s.ID.OptionRight == right and s.ID.Date == expiration])
         if split_correct:
@@ -48,13 +42,9 @@ class QuantBookWrapper():
         return strikes
 
     def get_available(self, start=(2022, 8, 25), right_abrev='c'):
-        if isinstance(start, tuple):
-            start = datetime(*start)
-        contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)
-        if right_abrev == 'c':
-            right = self.OptionRight.Call
-        else:
-            right = self.OptionRight.Put
+        start = format_dates(start)
+        contract_symbols = self.get_contract_symbols(start)
+        right = self.OptionRight.Call if right_abrev == 'c' else self.OptionRight.Put
 
         options = [(s.ID.Date, s.ID.StrikePrice) for s in contract_symbols if s.ID.OptionRight == right]
         df = pd.DataFrame(data=options, columns=['datetime', 'strike'])
@@ -71,30 +61,21 @@ class QuantBookWrapper():
 
     def option_history(self, strike, expiry, start=(2022, 8, 25), right_abrev='c', res_abrev='h',
                        split_correct=(2022, 8, 25), reduce_clutter=True):
-        if isinstance(start, tuple):
-            start = datetime(*start)
-        if isinstance(expiry, tuple):
-            expiry = datetime(*expiry)
-        if split_correct:
-            split_correct = datetime(*split_correct)
-            if start < split_correct:
-                strike *= 3
+        start, expiry = format_dates(start, expiry)
         expiry = expiry.replace(hour=0, minute=0)
         start = start.replace(hour=0, minute=0)
-        contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)
-        i = 1
-        while len(contract_symbols) == 0:
-            start -= timedelta(days=i)
-            contract_symbols = self.qb.OptionChainProvider.GetOptionContractList(self.equity_symbol, start)
-            i += 1
-        if right_abrev == 'c':
-            right = self.OptionRight.Call
-        else:
-            right = self.OptionRight.Put
+        contract_symbols = self.get_contract_symbols(start)
+
+        right = self.OptionRight.Call if right_abrev == 'c' else self.OptionRight.Put
         if res_abrev == 'h':
             resolution = self.Resolution.Hour
         else:
             raise NotImplementedError
+
+        if split_correct:
+            split_correct = format_dates(split_correct)
+            if start < split_correct:
+                strike *= 3
 
         options = [s for s in contract_symbols if s.ID.OptionRight == right and s.ID.StrikePrice == strike and s.ID.Date == expiry]
         if len(options) == 0:

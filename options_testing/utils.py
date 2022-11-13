@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from scipy.stats import norm
 
 def uniform_samp(df):
     diff = np.array(df.index[1:] - df.iloc[:-1].index)/np.timedelta64(1,'ns')
@@ -62,3 +63,37 @@ def get_start_price(df, g, expiration):
     df = df.merge(options_create, left_on=['year' ,expiration], right_on=['year' ,expiration], suffixes=('', '_b'))
     df = df.rename(columns={'underlying_open_b': 'start_price'})
     return df
+
+def format_dates(*dates):
+    dates = [datetime(*date) if isinstance(date, tuple) else date for date in dates]
+    if len(dates) == 1:
+        dates = dates[0]
+    return dates
+
+def black_scholes(S, K, T, r, sigma, right='c'):
+    '''
+
+    :param S: Asset price
+    :param K: Strike price
+    :param T: Time to maturity
+    :param r: risk-free rate (treasury bills)
+    :param sigma: volatility
+    :return: call price
+    '''
+
+    N_prime = norm.pdf
+    N = norm.cdf
+
+    T /= 365.
+    r /= 100.
+    sigma /= 100.
+
+    ###standard black-scholes formula
+    d1 = (np.log(S / K) + (r + sigma ** 2 / 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+
+    if right == 'c':
+        contract = S * N(d1) - N(d2)* K * np.exp(-r * T)
+    else:
+        contract = N(-d2) * K * np.exp(-r * T) - S * N(-d1)
+    return contract

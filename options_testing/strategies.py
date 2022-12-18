@@ -59,6 +59,63 @@ def weekly_short_calls(df_minutely, percent_offset=5):
     short_call['running_profit'] = short_call['weekly profit'].cumsum()
     return short_call
 
+def PMCC_simple(df_minutely, long_offset=-5, short_offset=5):
+    """
+    simple combines weekly short calls and a leap with fixed offsets based on underlying_opening price.
+    assumes that short strikes are always above leap strike which is unlikely
+
+    :param df_minutely:
+    :param long_offset:
+    :param short_offset:
+    :return:
+    """
+    leap_weekly = LEAPS(df_minutely, percent_offset=long_offset)[['weekly profit', 'running_profit', 'date']]
+    leap_weekly = leap_weekly.rename(
+        columns={'weekly profit': 'leap weekly profit', 'running_profit': 'leap running_profit'})
+    short_call = weekly_short_calls(df_minutely, percent_offset=short_offset)[['weekly profit', 'running_profit']]
+    short_call = short_call.rename(
+        columns={'weekly profit': 'short calls weekly profit', 'running_profit': 'short calls running_profit'})
+    pmcc = pd.concat((leap_weekly, short_call), axis=1)
+    pmcc['total running_profit'] = pmcc['leap running_profit'] + pmcc['short calls running_profit']
+    return pmcc
+
+
+class ShortCalls():
+    def __init__(self, percent_offset=5, use_historical=True):
+        self.percent_offset = percent_offset
+        self.use_historical = use_historical
+        self.option_history = None
+        self.legs = ['strike']
+
+    def get_strikes(self, df, guide):
+        df['strike'] = df[guide] * (1 + self.percent_offset / 100.)
+
+        if self.use_historical:
+            for index, row in df.iterrows():
+                strikes = view_available_strikes(
+                    row['date'],
+                    row['date_expiration'], 'c'
+                )
+                df.at[index, 'strike'] = strikes[np.argmin(np.abs(strikes - row['strike']))]
+
+        df['new_option'] = (df.strike.diff() + df.date_expiration.diff() / pd.Timedelta(1.0, unit='D')) != 0.  # + df.right.diff()
+        return df
+
+    def candle_profit(self, candle):
+        if self.use_historical:
+            if candle['new_option']:
+                self.option_history = option_history(candle['strike'], candle['date_expiration'],
+                                                     start=candle['date']).droplevel([0, 1, 2, 3])
+            open = self.option_history[self.option_history.index == candle['date']]['open'].array[0]
+            close = self.option_history[self.option_history.index == candle['date']]['close'].array[0]
+        else:
+            open = op.black_scholes(K=candle['strike'], St=candle['underlying_open'], r=3,
+                                    t=candle['dte'] + 1. / 24, v=53, type='c')['value']['option value']
+            close = op.black_scholes(K=candle['strike'], St=candle['underlying_close'], r=3,
+                                     t=candle['dte'], v=53, type='c')['value']['option value']
+        return open, close
+
+
 
 class PMCC():
     def __init__(self, long_offset_start=5, short_offset_start=5, long_exp_start=12, short_exp_start=8,
@@ -191,29 +248,32 @@ class IronCondors():
         df['sell_put_strike'] = df[guide] - df[guide]*self.long_offset/100.
         df['buy_put_strike'] = df['sell_put_strike'] - df['sell_put_strike']*self.wing_distance/100.
 
+        df['new_option'] =  df.date_expiration.diff()/pd.Timedelta(1.0, unit='D') != 0. 
+        df.loc[df['date'] == self.split_correct, 'new_option'] = True
+
         if self.use_historical:
             for index, row in df.iterrows():
-                for i, leg in enumerate(self.legs):
-                    meta = leg.split('_')
-                    contract = meta[1]
-                    contract_abbrev = contract[0]
-                    if i % 2 == 0:
-                        strikes = self.qbw.get_available_strikes(
-                            row['date'],
-                            row['date_expiration'], contract_abbrev
-                        )
-                        if len(strikes) == 0:  # use previous in the case of missing data
-                            strikes = np.array([df.iloc[index - 1][leg]])
+                if row['new_option']:
+                    for i, leg in enumerate(self.legs):
+                        meta = leg.split('_')
+                        contract = meta[1]
+                        con_abbrev = contract[0]
+                        if i % 2 == 0:
+                            strikes = self.qbw.get_available_strikes(
+                                row['date'],
+                                row['date_expiration'], con_abbrev
+                            )
+                            if len(strikes) == 0:  # use previous in the case of missing data
+                                strikes = np.array([df.iloc[index - 1][leg]])
 
-                    strike_ind = np.argmin(np.abs(strikes - row[leg]))
-                    if meta[0] == 'buy' and strikes[strike_ind] == df.at[index, f'sell_{contract}_strike']:
-                        next_ind = 1 if contract_abbrev == 'c' else -1
-                        strike_ind += next_ind
-                    df.at[index, leg] = strikes[strike_ind]
+                        strike_ind = np.argmin(np.abs(strikes - row[leg]))
+                        if meta[0] == 'buy' and strikes[strike_ind] == df.at[index, f'sell_{contract}_strike']:
+                            next_ind = 1 if con_abbrev == 'c' else -1
+                            strike_ind += next_ind
+                        df.at[index, leg] = strikes[strike_ind]
+                else:
+                    df.loc[index, self.legs] = df.loc[index-1, self.legs]                
 
-        df['new_option'] = (df.sell_call_strike.diff() + df.date_expiration.diff() / pd.Timedelta(1.0,
-                                                                                                  unit='D')) != 0.  # + df.right.diff()
-        df.loc[df['date'] == self.split_correct, 'new_option'] = True
         return df
 
     def candle_profit(self, candle, combine_legs=True):

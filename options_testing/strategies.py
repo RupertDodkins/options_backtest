@@ -266,13 +266,14 @@ class IronCondors():
                             if len(strikes) == 0:  # use previous in the case of missing data
                                 strikes = np.array([df.iloc[index - 1][leg]])
 
-                        strike_ind = np.argmin(np.abs(strikes - row[leg]))
-                        if meta[0] == 'buy' and strikes[strike_ind] == df.at[index, f'sell_{contract}_strike']:
-                            next_ind = 1 if con_abbrev == 'c' else -1
-                            strike_ind += next_ind
-                        df.at[index, leg] = strikes[strike_ind]
+                        strike = strikes[np.argmin(np.abs(strikes - row[leg]))]
+                        print('strikes', strikes, strike)
+                        if meta[0] == 'buy' and strike == df.at[index, f'sell_{contract}_strike']:
+                            strike = strikes[strikes > strike].min() if con_abbrev == 'c' else strikes[strikes < strike].max()
+                            print('buy leg', strike)
+                        df.at[index, leg] = strike
                 else:
-                    df.loc[index, self.legs] = df.loc[index-1, self.legs]                
+                    df.loc[index, self.legs] = df.loc[index-1, self.legs]                 
 
         return df
 

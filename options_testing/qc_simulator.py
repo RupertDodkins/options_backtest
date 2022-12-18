@@ -16,26 +16,31 @@ class QuantBook():
         self.Securities.Keys = Equity(ticker)
         return self.Securities.Keys
 
-    def History(self, keys, *args):
+    def History(self, keys, *args, split_correct=(2022, 8, 25)):
+        if split_correct:
+            split_correct = format_dates(split_correct)
+
         tsla = load_tsla_hourly()
         tsla.index = pd.to_datetime(tsla.index)
 
         if isinstance(keys, Equity):
             nbar, res = args
             assert res == 'h'
-            tsla = tsla.iloc[:nbar]
+            tsla = tsla.iloc[-nbar:]
             tsla['symbol'] = 'lol'
             tsla['time'] = tsla.index
             tsla.set_index(['symbol', 'time'], inplace=True)
         elif isinstance(keys, Contract):
             start, expiration, res = args
-            print(keys.ID.__dict__, expiration)
             assert res == 'h'
             start, expiry = format_dates(start, expiration)
             tsla = tsla[start:expiration]
             for index, row in tsla.iterrows():
-                ohlc = black_scholes(row[['open', 'high', 'low', 'close']].array, keys.ID.StrikePrice,
-                                   (keys.ID.Date-index).days, r=3, sigma=53, right=keys.ID.OptionRight)
+                underlying_ohlc = row[['open', 'high', 'low', 'close']].array
+                if split_correct and (start < split_correct):
+                    underlying_ohlc *= 3
+                ohlc = black_scholes(underlying_ohlc, keys.ID.StrikePrice,
+                                   (expiration-index)/pd.Timedelta(1.0, unit='D'), r=3, sigma=53, right=keys.ID.OptionRight)
                 tsla.loc[index][['open', 'high', 'low', 'close']] = ohlc
             tsla['expiry'] = expiration
             tsla['strike'] = keys.ID.StrikePrice

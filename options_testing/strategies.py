@@ -206,6 +206,7 @@ class IronCondors():
 
         df['new_option'] = (df.sell_call_strike.diff() + df.date_expiration.diff() / pd.Timedelta(1.0,
                                                                                                   unit='D')) != 0.  # + df.right.diff()
+        df.loc[df['date'] == self.split_correct, 'new_option'] = True
         return df
 
     def candle_profit(self, candle, combine_legs=True):

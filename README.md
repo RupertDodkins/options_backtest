@@ -35,13 +35,15 @@ Quantconnect issue on IV in qb research envs
 https://github.com/QuantConnect/Lean/issues/3083
 All issues https://www.quantconnect.com/forum/sitemap.xml
 
-Update get_strikes to only compute strikes once per option (current it updates once per hour)
+<s>Simulate QC classes for offline coding</s> <br/> <br/>
+
+Test covered calls, with the 20% stop loss
+
+Update get_strikes to only compute strikes once per option (currently it updates once per hour)
 
 Fix pre August 31, 2020 split values 
 
 Run Monte Carlo on PMCC
-
-Test covered calls
 
 Do post requests from quantconnect to a flask server app?
 

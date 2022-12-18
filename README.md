@@ -39,7 +39,7 @@ All issues https://www.quantconnect.com/forum/sitemap.xml
 
 Test covered calls, with the 20% stop loss
 
-Update get_strikes to only compute strikes once per option (currently it updates once per hour)
+<s>Update get_strikes to only compute strikes once per option (currently it updates once per hour)</s> <br/> <br/>
 
 Fix pre August 31, 2020 split values 
 

@@ -181,10 +181,10 @@ class IronCondors():
         self.option_history = {}
 
     def get_strikes(self, df, guide):
-        df['sell_call_strike'] = df[guide] * (1 + self.short_offset / 100.)
-        df['buy_call_strike'] = df['sell_call_strike'] * (1 + self.wing_distance / 100.)
-        df['sell_put_strike'] = df[guide] * (1 - self.long_offset / 100.)
-        df['buy_put_strike'] = df['sell_put_strike'] * (1 - self.wing_distance / 100.)
+        df['sell_call_strike'] = df[guide] + df[guide]*self.short_offset/100.
+        df['buy_call_strike'] = df['sell_call_strike'] + df['sell_call_strike']*self.wing_distance/100.
+        df['sell_put_strike'] = df[guide] - df[guide]*self.long_offset/100.
+        df['buy_put_strike'] = df['sell_put_strike'] - df['sell_put_strike']*self.wing_distance/100.
 
         if self.use_historical:
             for index, row in df.iterrows():

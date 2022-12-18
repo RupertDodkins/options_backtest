@@ -80,43 +80,6 @@ def PMCC_simple(df_minutely, long_offset=-5, short_offset=5):
     return pmcc
 
 
-class ShortCalls():
-    def __init__(self, percent_offset=5, use_historical=True):
-        self.percent_offset = percent_offset
-        self.use_historical = use_historical
-        self.option_history = None
-        self.legs = ['strike']
-
-    def get_strikes(self, df, guide):
-        df['strike'] = df[guide] * (1 + self.percent_offset / 100.)
-
-        if self.use_historical:
-            for index, row in df.iterrows():
-                strikes = view_available_strikes(
-                    row['date'],
-                    row['date_expiration'], 'c'
-                )
-                df.at[index, 'strike'] = strikes[np.argmin(np.abs(strikes - row['strike']))]
-
-        df['new_option'] = (df.strike.diff() + df.date_expiration.diff() / pd.Timedelta(1.0, unit='D')) != 0.  # + df.right.diff()
-        return df
-
-    def candle_profit(self, candle):
-        if self.use_historical:
-            if candle['new_option']:
-                self.option_history = option_history(candle['strike'], candle['date_expiration'],
-                                                     start=candle['date']).droplevel([0, 1, 2, 3])
-            open = self.option_history[self.option_history.index == candle['date']]['open'].array[0]
-            close = self.option_history[self.option_history.index == candle['date']]['close'].array[0]
-        else:
-            open = op.black_scholes(K=candle['strike'], St=candle['underlying_open'], r=3,
-                                    t=candle['dte'] + 1. / 24, v=53, type='c')['value']['option value']
-            close = op.black_scholes(K=candle['strike'], St=candle['underlying_close'], r=3,
-                                     t=candle['dte'], v=53, type='c')['value']['option value']
-        return open, close
-
-
-
 class PMCC():
     def __init__(self, long_offset_start=5, short_offset_start=5, long_exp_start=12, short_exp_start=8,
                  use_historical=True):
@@ -267,10 +230,8 @@ class IronCondors():
                                 strikes = np.array([df.iloc[index - 1][leg]])
 
                         strike = strikes[np.argmin(np.abs(strikes - row[leg]))]
-                        print('strikes', strikes, strike)
                         if meta[0] == 'buy' and strike == df.at[index, f'sell_{contract}_strike']:
                             strike = strikes[strikes > strike].min() if con_abbrev == 'c' else strikes[strikes < strike].max()
-                            print('buy leg', strike)
                         df.at[index, leg] = strike
                 else:
                     df.loc[index, self.legs] = df.loc[index-1, self.legs]                 

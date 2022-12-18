@@ -177,13 +177,15 @@ class IronCondors():
         self.long_offset = long_offset
         self.short_offset = short_offset
         self.wing_distance = wing_distance
-        self.legs = ['sell_call_strike', 'buy_call_strike', 'sell_put_strike', 'buy_put_strike']
+        self.legs = 'DEFINED IN get_strikes'
         self.use_historical = use_historical
         self.option_history = {}
         self.qbw = qbw
         self.split_correct = format_dates(split_correct)
 
     def get_strikes(self, df, guide):
+        self.legs = ['sell_call_strike', 'buy_call_strike', 'sell_put_strike',
+                     'buy_put_strike']  #define legs here since their order and content is assumed below
         df['sell_call_strike'] = df[guide] + df[guide]*self.short_offset/100.
         df['buy_call_strike'] = df['sell_call_strike'] + df['sell_call_strike']*self.wing_distance/100.
         df['sell_put_strike'] = df[guide] - df[guide]*self.long_offset/100.
@@ -193,16 +195,21 @@ class IronCondors():
             for index, row in df.iterrows():
                 for i, leg in enumerate(self.legs):
                     meta = leg.split('_')
-                    contract = meta[1][0]
+                    contract = meta[1]
+                    contract_abbrev = contract[0]
                     if i % 2 == 0:
                         strikes = self.qbw.get_available_strikes(
                             row['date'],
-                            row['date_expiration'], contract
+                            row['date_expiration'], contract_abbrev
                         )
                         if len(strikes) == 0:  # use previous in the case of missing data
                             strikes = np.array([df.iloc[index - 1][leg]])
 
-                    df.at[index, leg] = strikes[np.argmin(np.abs(strikes - row[leg]))]
+                    strike_ind = np.argmin(np.abs(strikes - row[leg]))
+                    if meta[0] == 'buy' and strikes[strike_ind] == df.at[index, f'sell_{contract}_strike']:
+                        next_ind = 1 if contract_abbrev == 'c' else -1
+                        strike_ind += next_ind
+                    df.at[index, leg] = strikes[strike_ind]
 
         df['new_option'] = (df.sell_call_strike.diff() + df.date_expiration.diff() / pd.Timedelta(1.0,
                                                                                                   unit='D')) != 0.  # + df.right.diff()

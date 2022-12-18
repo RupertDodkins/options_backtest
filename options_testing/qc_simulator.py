@@ -59,18 +59,29 @@ class Securities():
 
 class OptionChainProvider():
     def __init__(self):
-        pass
+        self.tsla_underlying = load_tsla_hourly()['open']
+        self.tsla_underlying.index = pd.to_datetime(self.tsla_underlying.index)
 
-    def GetOptionContractList(self, symbol, start, weeks_out=4, strikes_out=3, strike_sep=5, underlying_price=300):
-        # TODO possibly implement close underlying price at that time from tsla history
+    def GetOptionContractList(self, symbol, start, weeks_out=4, strikes_out=15, strike_sep_factor=50,
+                              split_correct=(2022, 8, 25)):
         # TODO possibly implement monthly expirations after weeklies
 
         assert symbol.upper() == 'TSLA'
-        if isinstance(start, tuple):
-            start = datetime(*start)
+        start = format_dates(start)
+
+        underlying_price = self.tsla_underlying[self.tsla_underlying.index <= start.replace(hour=0, minute=0)][-1]
+        underlying_price = np.round(underlying_price)
+
+        if split_correct:  # qc's get_available_strikes has the listed strike prices at the time (not corrected to today)
+            split_correct = format_dates(split_correct)
+            if start < split_correct:
+                underlying_price *= 3
+
+        strike_sep = underlying_price/strike_sep_factor
+        strike_sep = np.round(strike_sep)
 
         rights = ['Call', 'Put']
-        closest_exp = start + timedelta(days=4 - start.weekday())
+        closest_exp = start.replace(hour=0, minute=0) + timedelta(days=4 - start.weekday()) #+ timedelta(hours=16-start.hour)
         strikes = underlying_price + np.arange(-strikes_out, strikes_out+1)*strike_sep
         dates = [closest_exp + timedelta(days=7*week) for week in range(weeks_out)]
 

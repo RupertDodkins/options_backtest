@@ -8,7 +8,7 @@ except ImportError:
     print('No opstrat module found. Wont be able to use BS model')
 import numpy as np
 from technical_analysis import get_poc
-from utils import aggregate, concat_dfs, get_start_price
+from utils import aggregate, concat_dfs, get_start_price, format_dates
 
 
 def get_option_history(spot_history, strike, expiration, volatility=53, risk_free=3.2, option_type='c'):
@@ -172,13 +172,16 @@ class ShortCalls():
 
 
 class IronCondors():
-    def __init__(self, long_offset=5, short_offset=5, wing_distance=1, use_historical=True):
+    def __init__(self, long_offset=5, short_offset=5, wing_distance=1, use_historical=True, qbw=None,
+                 split_correct=(2022, 8, 25, 10, 0)):
         self.long_offset = long_offset
         self.short_offset = short_offset
         self.wing_distance = wing_distance
         self.legs = ['sell_call_strike', 'buy_call_strike', 'sell_put_strike', 'buy_put_strike']
         self.use_historical = use_historical
         self.option_history = {}
+        self.qbw = qbw
+        self.split_correct = format_dates(split_correct)
 
     def get_strikes(self, df, guide):
         df['sell_call_strike'] = df[guide] + df[guide]*self.short_offset/100.
@@ -192,7 +195,7 @@ class IronCondors():
                     meta = leg.split('_')
                     contract = meta[1][0]
                     if i % 2 == 0:
-                        strikes = get_available_strikes(
+                        strikes = self.qbw.get_available_strikes(
                             row['date'],
                             row['date_expiration'], contract
                         )
@@ -216,7 +219,7 @@ class IronCondors():
             money_gained = [-1, 1][meta[0] == 'sell']
             if self.use_historical:
                 if candle['new_option']:
-                    self.option_history[leg] = option_history(candle[leg], candle['date_expiration'],
+                    self.option_history[leg] = self.qbw.option_history(candle[leg], candle['date_expiration'],
                                                             start=candle['date'], right_abrev=contract)
                 leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']]['open'].array[0]
                 leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']]['close'].array[0]

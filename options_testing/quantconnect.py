@@ -25,7 +25,7 @@ class QuantBookWrapper():
         tsla = tsla[tsla.index <= datetime.today().replace(hour=16, minute=0) - timedelta(days=3)]
         return tsla
 
-    def get_available_strikes(self, start=(2022, 8, 25), expiration=(2022,10,14), right_abrev='c',
+    def get_available_strikes(self, start=(2022, 8, 25), expiration=(2022, 10, 14), right_abrev='c',
                               split_correct=(2022, 8, 25)):
         start, expiration = format_dates(start, expiration)
         expiration = expiration.replace(hour=0, minute=0)
@@ -47,11 +47,11 @@ class QuantBookWrapper():
         right = self.OptionRight.Call if right_abrev == 'c' else self.OptionRight.Put
 
         options = [(s.ID.Date, s.ID.StrikePrice) for s in contract_symbols if s.ID.OptionRight == right]
-        df = pd.DataFrame(data=options, columns=['datetime', 'strike'])
+        df = pd.DataFrame(data=options, columns=['expiry', 'strike'])
         if len(df) == 0:
             print(f'No options found on {start} for some reason')
             return None
-        df['days_since_start'] = df['datetime'] - start
+        df['days_since_start'] = df['expiry'] - start
         df = df.sort_values('strike').sort_values('days_since_start')
         return df
 

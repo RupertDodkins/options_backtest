@@ -97,3 +97,13 @@ def black_scholes(S, K, T, r, sigma, right='c'):
     else:
         contract = N(-d2) * K * np.exp(-r * T) - S * N(-d1)
     return contract
+
+def colfix(df, L=5): 
+    df = df.rename(columns=lambda x: ''.join(x.replace('_', ' ')[i:i+L] for i in range(0,len(x),L)))# if df[x].dtype in ['float64','int64'] else x)
+    df = df.round(decimals=2)
+    return df
+
+def pretty_strat_df(df):
+    df = df.drop(['underlying_high', 'underlying_low', 'volume', 'week', 'year', 'date_expiration', 'start_price'], axis=1)
+    df = colfix(df)
+    return df

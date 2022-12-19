@@ -8,7 +8,7 @@ except ImportError:
     print('No opstrat module found. Wont be able to use BS model')
 import numpy as np
 from technical_analysis import get_poc
-from utils import aggregate, concat_dfs, get_start_price, format_dates
+from utils import aggregate, concat_dfs, get_start_price, format_dates, colfix
 
 
 def get_option_history(spot_history, strike, expiration, volatility=53, risk_free=3.2, option_type='c'):
@@ -400,9 +400,10 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
 
     df = strategy.get_strikes(df, guide)
     legs = strategy.legs
-    for leg in legs:
-        df[leg.name+'_open'] = 0
-        df[leg.name+'_close'] = 0
+    if not combine_legs:
+        for leg in legs:
+            df[leg.name+'_open'] = 0
+            df[leg.name+'_close'] = 0
 
     for ih, (date, candle) in enumerate(df.iterrows()):
         if combine_legs:

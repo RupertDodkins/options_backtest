@@ -286,7 +286,7 @@ class LegMeta():
 
 
 class StrategyBase():
-    def __init__(self, legs=None, qbw=None, stop_loss=None, stop_gain=None, split_correct=(2022, 8, 25, 10, 0)):
+    def __init__(self, legs=None, qbw=None, stop_loss=None, stop_gain=None, force_strike_diff=False, split_correct=(2022, 8, 25, 10, 0)):
         if not legs:
             legs = [LegMeta()]  
         self.legs = legs
@@ -295,6 +295,7 @@ class StrategyBase():
         self.split_correct = format_dates(split_correct)
         self.stop_loss = stop_loss
         self.stop_gain = stop_gain
+        self.force_strike_diff = force_strike_diff  # iron condors legs sometimes pick the same strikes making spread worthless 
         self.long_theta = None
 
     def coarse_offets(self, df, guide):
@@ -321,36 +322,10 @@ class StrategyBase():
                 strikes = prev_offsets['strikes'][leg]
 
             offsets['strikes'][leg] = strikes[np.argmin(np.abs(strikes - candle[f'{leg}_strike']))]
+            if self.force_strike_diff and leg.trans == 'buy' and offsets['strikes'][leg] == offsets['strikes'][prev_leg]:
+                offsets['strikes'][leg] = strikes[strikes > offsets['strikes'][leg]].min() if leg.contract == 'call' else strikes[strikes < offsets['strikes'][leg]].max()
+            prev_leg = leg
         return offsets
-
-
-    # def candle_offsets(self, df, guide):
-    #     # for leg in self.legs:
-    #     #     df[f"{leg}_strike"] = df[guide] + df[guide]*leg.strike_offset/100.
-    #     #     df[f"{leg}_exp"] = df['date_expiration'] + timedelta(days=(leg.exp_offset)*7)
-
-    #     # for index, row in df.iterrows():
-    #     if row['new_option']:
-    #         for leg in self.legs:
-    #             chains = self.qbw.get_available(start=row['date'])
-    #             if chains is None:
-    #                 strikes = []
-    #             else:
-    #                 available_expirations = chains['expiry'].unique()
-    #                 closest_ind = np.argmin(np.abs(available_expirations - np.datetime64(row[f"{leg}_exp"])))
-    #                 df.at[index, f'{leg}_exp'] = pd.to_datetime(available_expirations[closest_ind])
-    #                 strikes = self.qbw.get_available_strikes(row['date'], df.at[index, f'{leg}_exp'], leg.contract[0])
-
-    #             if len(strikes) == 0:  # use previous in the case of misssing data
-    #                 df.at[index, f'{leg}_exp'] = df.iloc[index-1][f'{leg}_exp']
-    #                 strikes = np.array([df.iloc[index-1][leg]])
-
-    #             df.at[index, f'{leg}_strike'] = strikes[np.argmin(np.abs(strikes - row[f'{leg}_strike']))]
-    #     else:
-    #         leg_names = [f'{l.name}_strike' for l in self.legs]
-    #         df.loc[index, leg_names] = df.loc[index-1, leg_names]                 
-
-    #     return df
 
     def candle_profit(self, candle, combine_legs=True):
         if combine_legs:

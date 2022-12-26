@@ -37,9 +37,13 @@ All issues https://www.quantconnect.com/forum/sitemap.xml
 
 <s>Simulate QC classes for offline coding</s> <br/> <br/>
 
-Test covered calls, with the 20% stop loss
+<s>Test different stop loss and stop gains</s> <br/> <br/>
 
 <s>Update get_strikes to only compute strikes once per option (currently it updates once per hour)</s> <br/> <br/>
+
+<s>Implement 3 calendar spread strategy</s> <br/> <br/>
+
+Plot profit chart as it's generated?
 
 Fix pre August 31, 2020 split values 
 

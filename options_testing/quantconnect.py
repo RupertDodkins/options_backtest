@@ -18,8 +18,11 @@ class QuantBookWrapper():
         tsla_equity = self.qb.AddEquity("TSLA")
         self.equity_symbol = tsla_equity.Symbol
 
-    def get_tsla(self, nbars=200):
-        tsla = self.qb.History(self.qb.Securities.Keys, nbars, self.Resolution.Hour)
+    def get_tsla(self, nbars=200, start=None, end=None):
+        if start and end:
+            tsla = self.qb.History(self.qb.Securities.Keys, start, end, self.Resolution.Hour)
+        else:    
+            tsla = self.qb.History(self.qb.Securities.Keys, nbars, self.Resolution.Hour)
         tsla = tsla.reset_index(level=[0])
         tsla = tsla.drop(['symbol'], axis=1)
         tsla = tsla[tsla.index <= datetime.today().replace(hour=16, minute=0) - timedelta(days=3)]

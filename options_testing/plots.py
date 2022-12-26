@@ -69,7 +69,7 @@ def plot_candles(df, value=None, lines=[], pivots=[], show_afterhours=True, log_
     update_fig(fig, pivots=pivots, show_afterhours=show_afterhours, log_y=log_y)
     return fig
 
-def plots(df_list, offsets, kwargs={}):
+def plot_profits(df_list, offsets, kwargs={}):
     n_colors = len(offsets)
     colors = px.colors.sample_colorscale("viridis", [n / (n_colors - 1) for n in range(n_colors)])
 
@@ -81,6 +81,20 @@ def plots(df_list, offsets, kwargs={}):
     for i in range(1, len(df_list)):
         fig.add_scatter(x=df_list[i]['date'],
                         y=df_list[i]['running_profit'],
+                        name=str(offsets[i]),
+                        line_color=colors[i])
+    update_fig(fig, **kwargs)
+
+def overlap_plots(df_list, offsets, kwargs={}):
+    n_colors = len(offsets)
+    colors = px.colors.sample_colorscale("viridis", [n / (n_colors - 1) for n in range(n_colors)])
+
+    fig = go.Figure(data=[go.Scatter(y=df_list[0]['running_profit'],
+                                     name=str(offsets[0]),
+                                     line_color=colors[0])])
+
+    for i in range(1, len(df_list)):
+        fig.add_scatter(y=df_list[i]['running_profit'],
                         name=str(offsets[i]),
                         line_color=colors[i])
     update_fig(fig, **kwargs)

@@ -24,9 +24,15 @@ class QuantBook():
         tsla.index = pd.to_datetime(tsla.index)
 
         if isinstance(keys, Equity):
-            nbar, res = args
+            if len(args) == 2:
+                nbar, res = args
+                tsla = tsla.iloc[-nbar:]
+            elif len(args) == 3:
+                start, end, res = args
+                tsla = tsla[start:end]
+            else:
+                raise NotImplementedError
             assert res == 'h'
-            tsla = tsla.iloc[-nbar:]
             tsla['symbol'] = 'lol'
             tsla['time'] = tsla.index
             tsla.set_index(['symbol', 'time'], inplace=True)

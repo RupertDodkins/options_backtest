@@ -120,7 +120,7 @@ def plot_KDE(df, pkx, pky, xr, kdy):
     fig.add_trace(go.Scatter(name="Peaks", x=pkx, y=pky, mode='markers', marker=pk_marker_args))
     fig.show()
 
-def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running_profit', show_afterhours=False):
+def plot_candles_and_profit(strategy_df, lines=['strike'], metrics=['running_profit'], show_afterhours=False):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     index = strategy_df['date'] if 'date' in strategy_df.columns else strategy_df.index
     value = ['underlying_open', 'underlying_high', 'underlying_low', 'underlying_close']
@@ -132,10 +132,11 @@ def plot_candles_and_profit(strategy_df, lines=['strike'], metric='running_profi
         for line in lines:
             fig.add_scatter(x=index, y=strategy_df[line], name=line)
 
-    fig.add_trace(go.Scatter(x=index, y=strategy_df[metric], name=metric),
-                  secondary_y=True)
     fig.update_yaxes(title_text="TSLA price", secondary_y=False)
-    fig.update_yaxes(title_text=metric, secondary_y=True)
+    for metric in metrics:
+        fig.add_trace(go.Scatter(x=index, y=strategy_df[metric], name=metric),
+                    secondary_y=True)
+        fig.update_yaxes(title_text=metric, secondary_y=True)
     update_fig(fig, show_afterhours=show_afterhours)
 
 def scatter_heatmap(x, y, corner=True, colorscheme='time'):

@@ -104,6 +104,6 @@ def colfix(df, L=5):
     return df
 
 def pretty_strat_df(df):
-    df = df.drop(['underlying_high', 'underlying_low', 'volume', 'week', 'year', 'date_expiration', 'start_price'], axis=1)
+    df = df.drop(['underlying_high', 'underlying_low', 'volume', 'week', 'year', 'date_expiration'], axis=1)
     df = colfix(df)
     return df

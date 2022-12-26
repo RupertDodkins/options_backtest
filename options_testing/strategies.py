@@ -192,85 +192,6 @@ class ShortCalls():
         return open, close
 
 
-class IronCondors():
-    def __init__(self, long_offset=5, short_offset=5, wing_distance=1, use_historical=True, qbw=None,
-                 split_correct=(2022, 8, 25, 10, 0)):
-        self.long_offset = long_offset
-        self.short_offset = short_offset
-        self.wing_distance = wing_distance
-        self.legs = 'DEFINED IN get_strikes'
-        self.use_historical = use_historical
-        self.option_history = {}
-        self.qbw = qbw
-        self.split_correct = format_dates(split_correct)
-
-    def get_strikes(self, df, guide):
-        self.legs = ['sell_call_strike', 'buy_call_strike', 'sell_put_strike',
-                     'buy_put_strike']  #define legs here since their order and content is assumed below
-        df['sell_call_strike'] = df[guide] + df[guide]*self.short_offset/100.
-        df['buy_call_strike'] = df['sell_call_strike'] + df['sell_call_strike']*self.wing_distance/100.
-        df['sell_put_strike'] = df[guide] - df[guide]*self.long_offset/100.
-        df['buy_put_strike'] = df['sell_put_strike'] - df['sell_put_strike']*self.wing_distance/100.
-
-        df['new_option'] =  df.date_expiration.diff()/pd.Timedelta(1.0, unit='D') != 0. 
-        df.loc[df['date'] == self.split_correct, 'new_option'] = True
-
-        if self.use_historical:
-            for index, row in df.iterrows():
-                if row['new_option']:
-                    for i, leg in enumerate(self.legs):
-                        meta = leg.split('_')
-                        contract = meta[1]
-                        con_abbrev = contract[0]
-                        if i % 2 == 0:
-                            strikes = self.qbw.get_available_strikes(
-                                row['date'],
-                                row['date_expiration'], con_abbrev
-                            )
-                            if len(strikes) == 0:  # use previous in the case of missing data
-                                strikes = np.array([df.iloc[index - 1][leg]])
-
-                        strike = strikes[np.argmin(np.abs(strikes - row[leg]))]
-                        if meta[0] == 'buy' and strike == df.at[index, f'sell_{contract}_strike']:
-                            strike = strikes[strikes > strike].min() if con_abbrev == 'c' else strikes[strikes < strike].max()
-                        df.at[index, leg] = strike
-                else:
-                    df.loc[index, self.legs] = df.loc[index-1, self.legs]                 
-
-        return df
-
-    def candle_profit(self, candle, combine_legs=True):
-        if combine_legs:
-            open, close = 0, 0
-        else:
-            open, close = [], []
-        for leg in self.legs:
-            meta = leg.split('_')
-            contract = meta[1][0]
-            money_gained = [-1, 1][meta[0] == 'sell']
-            if self.use_historical:
-                if candle['new_option']:
-                    self.option_history[leg] = self.qbw.option_history(candle[leg], candle['date_expiration'],
-                                                            start=candle['date'], right_abrev=contract)
-                leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']]['open'].array[0]
-                leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']]['close'].array[0]
-            else:
-                leg_open = op.black_scholes(
-                    K=candle[leg], St=candle['underlying_open'], r=3, t=candle['dte'] + 1. / 24, v=53, type=contract
-                )['value']['option value']
-                leg_close = op.black_scholes(
-                    K=candle[leg], St=candle['underlying_close'], r=3, t=candle['dte'], v=53, type=contract
-                )['value']['option value']
-            leg_open *= money_gained
-            leg_close *= money_gained
-            if not combine_legs:
-                leg_open, leg_close = [leg_open], [leg_close]
-            open += leg_open
-            close += leg_close
-
-        return open, close
-
-
 class LegMeta():
     def __init__(self, trans='sell', contract='call', strike_offset=0, exp_offset=0, name=None):
         self.trans=trans
@@ -305,9 +226,11 @@ class StrategyBase():
         
         return df
 
-    def candle_realized_offsets(self, candle, prev_offsets):
+    def candle_realized_offsets(self, candle, guide, prev_offsets):
         offsets = {meta: {l: 0. for l in self.legs} for meta in ['strikes', 'exps']}
         for leg in self.legs:
+            candle[f"{leg}_strike"] = candle[guide] + candle[guide]*leg.strike_offset/100.
+            candle[f"{leg}_exp"] = candle['date_expiration'] + timedelta(days=(leg.exp_offset)*7)
             chains = self.qbw.get_available(start=candle['date'])
             if chains is None:
                 strikes = []
@@ -402,21 +325,29 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
 
     df['new_option'] =  df.date_expiration.diff()/pd.Timedelta(1.0, unit='D') != 0. 
     df.loc[df['date'] == format_dates(split_correct), 'new_option'] = True
+    df['early_stop'] = False
+    df['stop_loss'] = None
+    df['stop_gain'] = None
 
-    df = strategy.coarse_offets(df, guide)
+    # df = strategy.coarse_offets(df, guide)
     legs = strategy.legs
     if not combine_legs:
         for leg in legs:
             df[leg.name+'_open'] = 0
             df[leg.name+'_close'] = 0
 
+    stop_loss_met, stop_gain_met = False, False
     option_start = 0
     offsets = {}
     for ih in range(len(df)):
+        if stop_loss_met or (stop_gain_met and df.loc[ih, 'dte'] > 2.):
+            df.at[ih, 'new_option'] = True
+            df.at[ih, 'early_stop'] = 'loss' if stop_loss_met else 'gain'
+
         if df.loc[ih]['new_option']:
             stop_loss_met, stop_gain_met = False, False
             option_start = ih
-            offsets = strategy.candle_realized_offsets(df.loc[ih], offsets)
+            offsets = strategy.candle_realized_offsets(df.loc[ih], guide, offsets)
             # np.array of list allows single leg strats to populate df
             df.loc[ih, [f'{l.name}_exp' for l in strategy.legs]] = np.array([offsets['exps'][leg] for leg in strategy.legs])
             df.loc[ih, [f'{l.name}_strike' for l in strategy.legs]] = np.array([offsets['strikes'][leg] for leg in strategy.legs])
@@ -424,28 +355,30 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
             leg_names = [f'{l.name}_strike' for l in strategy.legs]
             df.loc[ih, leg_names] = df.loc[ih-1, leg_names]   
 
-        if stop_loss_met or stop_gain_met:
-            df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = df.at[ih-1, 'strategy_close'], df.at[ih-1, 'strategy_close']
+        # if stop_loss_met or stop_gain_met:
+            # df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = df.at[ih-1, 'strategy_close'], df.at[ih-1, 'strategy_close']
+        # else:
+        if combine_legs:
+            df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strategy.candle_profit(df.loc[ih], combine_legs=True)
         else:
-            if combine_legs:
-                df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strategy.candle_profit(df.loc[ih],
-                                                                                                combine_legs=True)
-            else:
-                legs_open, legs_close = strategy.candle_profit(df.loc[ih], combine_legs=False)
-                df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = np.sum(legs_open), np.sum(legs_close)
-                for leg, open, close in zip(legs, legs_open, legs_close):
-                    df.at[ih, leg.name + '_open'] = open
-                    df.at[ih, leg.name + '_close'] = close
+            legs_open, legs_close = strategy.candle_profit(df.loc[ih], combine_legs=False)
+            df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = np.sum(legs_open), np.sum(legs_close)
+            for leg, open, close in zip(legs, legs_open, legs_close):
+                df.at[ih, leg.name + '_open'] = open
+                df.at[ih, leg.name + '_close'] = close
 
         if ih == 0 and strategy.long_theta is None:  # assumes strat always stays as either long or short theta throughput backtest 
             strategy.long_theta = int(df.at[option_start, 'strategy_close'] > 0)
-        if strategy.stop_loss:
-            stop_loss_met = df.at[ih, 'strategy_close'] > df.at[option_start, 'strategy_close'] * (1. + strategy.long_theta*strategy.stop_loss/100)
-            if stop_loss_met:
-                print(ih, df.loc[ih, 'date'], 'stop_loss_met')
-        if  strategy.stop_gain:
-            stop_gain_met = df.at[ih, 'strategy_close'] < df.at[option_start, 'strategy_close'] * (1. - strategy.long_theta*strategy.stop_gain/100)
-            print(ih, df.loc[ih, 'date'], 'stop_gain')
+        if strategy.stop_loss is not None:
+            df.at[ih, 'stop_loss'] = df.at[option_start, 'strategy_open'] * (1. + strategy.long_theta*strategy.stop_loss/100)
+            stop_loss_met = df.at[ih, 'strategy_close'] > df.at[ih, 'stop_loss']
+            # if stop_loss_met:
+            #     print(ih, df.loc[ih, 'date'], 'stop_loss_met')
+        if  strategy.stop_gain is not None:
+            df.at[ih, 'stop_gain'] = df.at[option_start, 'strategy_open'] * (1. - strategy.long_theta*strategy.stop_gain/100)
+            stop_gain_met = df.at[ih, 'strategy_close'] < df.at[ih, 'stop_gain']
+            # if stop_gain_met:
+            #     print(ih, df.loc[ih, 'date'], 'stop_gain_met', df.at[ih, 'strategy_close'], df.at[ih, 'stop_gain'])
 
     df['hourly_profit'] = -df['strategy_close'].diff()
     # df['hourly_profit'][df['new_option']] = df['strategy_open'] - df['strategy_close']

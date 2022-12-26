@@ -340,9 +340,10 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
     option_start = 0
     offsets = {}
     for ih in range(len(df)):
-        if stop_loss_met or (stop_gain_met and df.loc[ih, 'dte'] > 2.):
+        if (stop_loss_met or stop_gain_met) and df.loc[ih, 'dte'] > 1.:
             df.at[ih, 'new_option'] = True
             df.at[ih, 'early_stop'] = 'loss' if stop_loss_met else 'gain'
+            # print(ih,  df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'ih')
 
         if df.loc[ih]['new_option']:
             stop_loss_met, stop_gain_met = False, False
@@ -361,6 +362,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
         if combine_legs:
             df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strategy.candle_profit(df.loc[ih], combine_legs=True)
         else:
+            # print(ih, df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'lol')
             legs_open, legs_close = strategy.candle_profit(df.loc[ih], combine_legs=False)
             df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = np.sum(legs_open), np.sum(legs_close)
             for leg, open, close in zip(legs, legs_open, legs_close):

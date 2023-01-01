@@ -255,35 +255,39 @@ class StrategyBase():
 
     def candle_profit(self, candle, combine_legs=True):
         if combine_legs:
-            open, close = 0, 0
+            prev_strat_end, this_strat_open, this_strat_close = 0, 0, 0
         else:
-            open, close = [], []
+            prev_strat_end, this_strat_open, this_strat_close = [], [], []
         for leg in self.legs:
-            contract = leg.contract[0]
-            leg_close_cost = 0
             if candle['close_previous']:
                 money_gained = [-1, 1][leg.trans != 'sell']
                 bidask = ['ask', 'bid'][leg.trans != 'sell']
-                leg_close_cost = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}open'].array[0]
-                leg_close_cost *= money_gained
-            
+                prev_leg_end = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}open'].array[0]
+                prev_leg_end *= money_gained
+            else:
+                prev_leg_end = 0
+
             if candle['new_option']:
                 self.option_history[leg] = self.qbw.option_history(
                     candle[f'{leg}_strike'], candle[f'{leg}_exp'], start=candle['date'], 
-                    right_abrev=contract, remove_indices=True, remove_bidasks=False
+                    right_abrev=leg.contract[0], remove_indices=True, remove_bidasks=False
                 )
+
             money_gained = [-1, 1][leg.trans == 'sell']
             bidask = ['ask', 'bid'][leg.trans == 'sell']
-            leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}open'].array[0]
-            leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}close'].array[0]
-            leg_open *= money_gained
-            leg_close *= money_gained
-            if not combine_legs:
-                leg_open, leg_close = [leg_open], [leg_close]
-            open += leg_open + leg_close_cost   # close each leg of previous strat at open 
-            close += leg_close
+            this_leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}open'].array[0]
+            this_leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}close'].array[0]
+            this_leg_open *= money_gained
+            this_leg_close *= money_gained
 
-        return open, close
+            if not combine_legs:
+                prev_strat_end, this_leg_open, this_leg_close = [prev_strat_end], [this_leg_open], [this_leg_close]
+
+            prev_strat_end += prev_leg_end
+            this_strat_open += this_leg_open
+            this_strat_close += this_leg_close
+
+        return prev_strat_end, this_strat_open, this_strat_close  # close each leg of previous strat at open 
 
 
 class LongPuts():
@@ -342,6 +346,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
     df['stop_loss'] = None
     df['stop_gain'] = None
     df['close_previous'] = False
+    df['prev_strat_end'] = 0
 
     # df = strategy.coarse_offets(df, guide)
     legs = strategy.legs
@@ -375,7 +380,8 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
             # df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = df.at[ih-1, 'strategy_close'], df.at[ih-1, 'strategy_close']
         # else:
         if combine_legs:
-            df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strategy.candle_profit(df.loc[ih], combine_legs=True)
+            strat_prices = strategy.candle_profit(df.loc[ih], combine_legs=True)
+            df.at[ih, 'prev_strat_end'], df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strat_prices
         else:
             # print(ih, df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'lol')
             legs_open, legs_close = strategy.candle_profit(df.loc[ih], combine_legs=False)
@@ -400,7 +406,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
 
     df['hourly_profit'] = -df['strategy_close'].diff()
     # df['hourly_profit'][df['new_option']] = df['strategy_open'] - df['strategy_close']
-    df.loc[df.new_option.array, 'hourly_profit'] = df['strategy_close'] - df['strategy_open']
+    df.loc[df.new_option.array, 'hourly_profit'] = df['prev_strat_end'] + df['strategy_open'] - df['strategy_close']  # e.g. $10 at open -> $7 at close, would be $3 gain
     df['running_profit'] = df['hourly_profit'].cumsum()
 
     return df

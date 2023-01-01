@@ -207,7 +207,9 @@ class LegMeta():
 
 
 class StrategyBase():
-    def __init__(self, legs=None, qbw=None, stop_loss=None, stop_gain=None, force_strike_diff=False, split_correct=(2022, 8, 25, 10, 0)):
+    def __init__(self, legs=None, qbw=None, stop_loss=None, stop_gain=None, force_strike_diff=False, split_correct=(2022, 8, 25, 10, 0),
+        new_option_risk=False
+    ):
         if not legs:
             legs = [LegMeta()]  
         self.legs = legs
@@ -218,6 +220,7 @@ class StrategyBase():
         self.stop_gain = stop_gain
         self.force_strike_diff = force_strike_diff  # iron condors legs sometimes pick the same strikes making spread worthless 
         self.long_theta = None
+        self.new_option_risk = new_option_risk
 
     def coarse_offets(self, df, guide):
         for leg in self.legs:
@@ -257,17 +260,27 @@ class StrategyBase():
             open, close = [], []
         for leg in self.legs:
             contract = leg.contract[0]
-            money_gained = [-1, 1][leg.trans == 'sell']
+            leg_close_cost = 0
+            if candle['close_previous']:
+                money_gained = [-1, 1][leg.trans != 'sell']
+                bidask = ['ask', 'bid'][leg.trans != 'sell']
+                leg_close_cost = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}open'].array[0]
+                leg_close_cost *= money_gained
+            
             if candle['new_option']:
-                self.option_history[leg] = self.qbw.option_history(candle[f'{leg}_strike'], candle[f'{leg}_exp'],
-                                                        start=candle['date'], right_abrev=contract)
-            leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']]['open'].array[0]
-            leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']]['close'].array[0]
+                self.option_history[leg] = self.qbw.option_history(
+                    candle[f'{leg}_strike'], candle[f'{leg}_exp'], start=candle['date'], 
+                    right_abrev=contract, remove_indices=True, remove_bidasks=False
+                )
+            money_gained = [-1, 1][leg.trans == 'sell']
+            bidask = ['ask', 'bid'][leg.trans == 'sell']
+            leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}open'].array[0]
+            leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}close'].array[0]
             leg_open *= money_gained
             leg_close *= money_gained
             if not combine_legs:
                 leg_open, leg_close = [leg_open], [leg_close]
-            open += leg_open
+            open += leg_open + leg_close_cost   # close each leg of previous strat at open 
             close += leg_close
 
         return open, close
@@ -328,6 +341,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
     df['early_stop'] = False
     df['stop_loss'] = None
     df['stop_gain'] = None
+    df['close_previous'] = False
 
     # df = strategy.coarse_offets(df, guide)
     legs = strategy.legs
@@ -340,9 +354,10 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
     option_start = 0
     offsets = {}
     for ih in range(len(df)):
-        if (stop_loss_met or stop_gain_met) and df.loc[ih, 'dte'] > 1.:
+        if (stop_loss_met or stop_gain_met) and df.loc[ih-1, 'dte'] > 1.:
             df.at[ih, 'new_option'] = True
-            df.at[ih, 'early_stop'] = 'loss' if stop_loss_met else 'gain'
+            df.at[ih, 'close_previous'] = True  # early stopped strats cost, expiring ones don't
+            df.at[ih-1, 'early_stop'] = 'loss' if stop_loss_met else 'gain'
             # print(ih,  df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'ih')
 
         if df.loc[ih]['new_option']:
@@ -371,6 +386,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
 
         if ih == 0 and strategy.long_theta is None:  # assumes strat always stays as either long or short theta throughput backtest 
             strategy.long_theta = int(df.at[option_start, 'strategy_close'] > 0)
+        
         if strategy.stop_loss is not None:
             df.at[ih, 'stop_loss'] = df.at[option_start, 'strategy_open'] * (1. + strategy.long_theta*strategy.stop_loss/100)
             stop_loss_met = df.at[ih, 'strategy_close'] > df.at[ih, 'stop_loss']

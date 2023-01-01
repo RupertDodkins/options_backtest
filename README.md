@@ -43,6 +43,8 @@ All issues https://www.quantconnect.com/forum/sitemap.xml
 
 <s>Implement 3 calendar spread strategy</s> <br/> <br/>
 
+<s>Implement bid ask and close option contracts cost</s> <br/> <br/>
+
 Test narrowing ICs as DTE decreases
 
 Plot profit chart as it's generated?

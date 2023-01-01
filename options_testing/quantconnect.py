@@ -63,7 +63,7 @@ class QuantBookWrapper():
         scatter_heatmap(options_start['strike'].array, options_start['days_since_start'].dt.days.array)
 
     def option_history(self, strike, expiry, start=(2022, 8, 25), right_abrev='c', res_abrev='h',
-                       split_correct=(2022, 8, 25), reduce_clutter=True):
+                       split_correct=(2022, 8, 25), remove_indices=True, remove_bidasks=True):
         start, expiry = format_dates(start, expiry)
         expiry = expiry.replace(hour=0, minute=0)
         start = start.replace(hour=0, minute=0)
@@ -88,12 +88,14 @@ class QuantBookWrapper():
             print('all options at that expiry\n', df)
         assert len(options) == 1
         history = self.qb.History(options[0], start, expiry + timedelta(days=1), resolution)
-        if reduce_clutter:
-            history = history[['close', 'high', 'low', 'open']].droplevel([0,1,2,3])
+        if remove_indices:
+            history = history.droplevel([0,1,2,3])
+        if remove_bidasks:
+            history = history[['close', 'high', 'low', 'open']]
         if split_correct:
             if start < split_correct:
                 history /= 3
-            if not reduce_clutter:
+            if not remove_bidasks:
                 history['volume'] *= 9
 
         return history

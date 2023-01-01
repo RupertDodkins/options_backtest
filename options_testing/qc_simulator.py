@@ -41,6 +41,7 @@ class QuantBook():
             assert res == 'h'
             start, expiry = format_dates(start, expiration)
             tsla = tsla[start:expiration]
+            tsla[['bidopen', 'bidhigh', 'bidlow', 'bidclose', 'askopen', 'askhigh', 'asklow', 'askclose']] = 0.
             for index, row in tsla.iterrows():
                 underlying_ohlc = row[['open', 'high', 'low', 'close']].array
                 if split_correct and (start < split_correct):
@@ -48,6 +49,8 @@ class QuantBook():
                 ohlc = black_scholes(underlying_ohlc, keys.ID.StrikePrice,
                                    (expiration-index)/pd.Timedelta(1.0, unit='D'), r=3, sigma=53, right=keys.ID.OptionRight)
                 tsla.loc[index][['open', 'high', 'low', 'close']] = ohlc
+                tsla.loc[index, ['bidopen', 'bidhigh', 'bidlow', 'bidclose']] = ohlc
+                tsla.loc[index, ['askopen', 'askhigh', 'asklow', 'askclose']] = ohlc
             tsla['expiry'] = expiration
             tsla['strike'] = keys.ID.StrikePrice
             tsla['type'] = keys.ID.OptionRight

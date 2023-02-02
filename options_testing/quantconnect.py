@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 from plots import scatter_heatmap
 from utils import format_dates
 
@@ -103,7 +104,7 @@ class QuantBookWrapper():
     def compare_chain_prices(self, start, expiration):
         strikes = self.get_available_strikes(start=start, expiration=expiration)
         strikes.sort()
-        opens = [qbw.option_history(s, datetime(*start), start=datetime(*expiration)).iloc[0]['open'] for s in strikes]
+        opens = [self.option_history(s, format_dates(start), start=format_dates(expiration)).iloc[0]['open'] for s in strikes]
         plt.plot(strikes, opens)
 
     def get_contract_symbols(self, start):

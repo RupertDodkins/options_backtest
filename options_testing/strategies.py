@@ -281,7 +281,7 @@ class StrategyBase():
             this_leg_close *= money_gained
 
             if not combine_legs:
-                prev_strat_end, this_leg_open, this_leg_close = [prev_strat_end], [this_leg_open], [this_leg_close]
+                prev_leg_end, this_leg_open, this_leg_close = [prev_leg_end], [this_leg_open], [this_leg_close]
 
             prev_strat_end += prev_leg_end
             this_strat_open += this_leg_open
@@ -384,8 +384,11 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
             df.at[ih, 'prev_strat_end'], df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strat_prices
         else:
             # print(ih, df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'lol')
-            legs_open, legs_close = strategy.candle_profit(df.loc[ih], combine_legs=False)
-            df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = np.sum(legs_open), np.sum(legs_close)
+            strat_prices = strategy.candle_profit(df.loc[ih], combine_legs=False)
+            prev_strat_end, legs_open, legs_close = strat_prices
+            df.at[ih, 'prev_strat_end'] = np.sum(prev_strat_end)
+            df.at[ih, 'strategy_open'] = np.sum(legs_open)
+            df.at[ih, 'strategy_close'] = np.sum(legs_close)
             for leg, open, close in zip(legs, legs_open, legs_close):
                 df.at[ih, leg.name + '_open'] = open
                 df.at[ih, leg.name + '_close'] = close

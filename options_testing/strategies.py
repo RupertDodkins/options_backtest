@@ -193,6 +193,54 @@ class ShortCalls():
 
 
 class LegMeta():
+    """
+    A `LegMeta` object hold the meta data for a option as part of a strategy.
+
+    Parameters
+    ----------
+    trans : str, {'sell', 'buy'}, optional
+        The transaction type for the option: 'buy' for buying (going long) or 'sell' for selling (going short).
+    contract : str, {'call', 'put'}, optional
+        The type of option contract: 'call' for a call option (the right to buy at the strike price) or 'put' for a put
+        option (the right to sell at the strike price).
+    strike_offset : float, optional
+        The offset from the current spot price at which the option's strike price is set (a positive offset for out-of-the-
+        money options, a negative offset for in-the-money options).
+    exp_offset : int, optional
+        The offset from the current date (in days) at which the option's expiration date is set (a positive offset for
+        future expiration dates, a negative offset for past expiration dates).
+    name : str, optional
+        A custom name that will be used to represent the option. If not provided, a default name will be generated based
+        on the other attributes.
+
+    Attributes
+    ----------
+    trans : str
+        The transaction type for the option.
+    contract : str
+        The type of option contract.
+    strike_offset : float
+        The offset from the current spot price at which the option's strike price is set.
+    exp_offset : int
+        The offset from the current date (in days) at which the option's expiration date is set.
+    name : str
+        The name that represents the option. If not provided by the user, a default name is generated based on the other
+        attributes.
+
+    Methods
+    -------
+    __repr__()
+        Returns the name that represents the option.
+
+    Examples
+    --------
+    >>> option1 = Option()
+    >>> option1
+    sell_call_0_0
+    >>> option2 = Option(contract='put', strike_offset=-5)
+    >>> option2
+    sell_put_-5_0
+    """
     def __init__(self, trans='sell', contract='call', strike_offset=0, exp_offset=0, name=None):
         self.trans=trans
         self.contract=contract
@@ -275,6 +323,11 @@ class StrategyBase():
 
             money_gained = [-1, 1][leg.trans == 'sell']
             bidask = ['ask', 'bid'][leg.trans == 'sell']
+            if f'{bidask}open' not in self.option_history[leg].keys() or f'{bidask}close' not in self.option_history[leg].keys():
+                bidask = ''
+            # print(self.option_history[leg][f'{bidask}open'].array[0], self.option_history[leg][f'open'].array[0], 'open')
+            if np.abs(self.option_history[leg][f'{bidask}open'].array[0]-self.option_history[leg][f'open'].array[0])/self.option_history[leg][f'open'].array[0] > 0.3:
+                bidask = ''
             this_leg_open = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}open'].array[0]
             this_leg_close = self.option_history[leg][self.option_history[leg].index == candle['date']][f'{bidask}close'].array[0]
             this_leg_open *= money_gained
@@ -322,7 +375,7 @@ def add_expirations(df, expiration='week'):
 
 
 def measure_period_profit(df, strategy, expiration='week', update_freq='candle', poc_window=0,
-                          combine_legs=False, split_correct=(2022, 8, 25, 10, 0)):
+                          combine_legs=False, split_correct=(2022, 8, 25, 10, 0), skip_hours=None):
     df = df.rename(columns={'open': 'underlying_open', 'high': 'underlying_high',
                             'low': 'underlying_low', 'close': 'underlying_close'})
     df['strategy_open'] = 0
@@ -355,10 +408,16 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
             df[leg.name+'_open'] = 0
             df[leg.name+'_close'] = 0
 
-    stop_loss_met, stop_gain_met = False, False
+    stop_loss_met, stop_gain_met, skip_met = False, False, False
     option_start = 0
     offsets = {}
     for ih in range(len(df)):
+        if skip_hours is not None:
+            skip_met = df.at[ih, 'dte']*24. <= skip_hours[1]
+            if skip_met:
+                df.iloc[ih] = df.iloc[ih-1]
+                df.at[ih, 'early_stop'] = 'user skip'
+                continue
         if (stop_loss_met or stop_gain_met) and df.loc[ih-1, 'dte'] > 1.:
             df.at[ih, 'new_option'] = True
             df.at[ih, 'close_previous'] = True  # early stopped strats cost, expiring ones don't
@@ -394,22 +453,23 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
                 df.at[ih, leg.name + '_close'] = close
 
         if ih == 0 and strategy.long_theta is None:  # assumes strat always stays as either long or short theta throughput backtest 
-            strategy.long_theta = int(df.at[option_start, 'strategy_close'] > 0)
+            strategy.long_theta = [-1,1][int(df['strategy_close'].mean() > 0)]
         
         if strategy.stop_loss is not None:
-            df.at[ih, 'stop_loss'] = df.at[option_start, 'strategy_open'] * (1. + strategy.long_theta*strategy.stop_loss/100)
+            df.at[ih, 'stop_loss'] = df.at[option_start, 'strategy_close'] * (1. + strategy.long_theta*strategy.stop_loss/100)
             stop_loss_met = df.at[ih, 'strategy_close'] > df.at[ih, 'stop_loss']
             # if stop_loss_met:
             #     print(ih, df.loc[ih, 'date'], 'stop_loss_met')
         if  strategy.stop_gain is not None:
-            df.at[ih, 'stop_gain'] = df.at[option_start, 'strategy_open'] * (1. - strategy.long_theta*strategy.stop_gain/100)
+            df.at[ih, 'stop_gain'] = df.at[option_start, 'strategy_close'] * (1. - strategy.long_theta*strategy.stop_gain/100)
             stop_gain_met = df.at[ih, 'strategy_close'] < df.at[ih, 'stop_gain']
             # if stop_gain_met:
             #     print(ih, df.loc[ih, 'date'], 'stop_gain_met', df.at[ih, 'strategy_close'], df.at[ih, 'stop_gain'])
 
     df['hourly_profit'] = -df['strategy_close'].diff()
     # df['hourly_profit'][df['new_option']] = df['strategy_open'] - df['strategy_close']
-    df.loc[df.new_option.array, 'hourly_profit'] = df['prev_strat_end'] + df['strategy_open'] - df['strategy_close']  # e.g. $10 at open -> $7 at close, would be $3 gain
+    # df.loc[df.new_option.array, 'hourly_profit'] = df['prev_strat_end'] + df['strategy_open'] - df['strategy_close']  # e.g. $10 at open -> $7 at close, would be $3 gain
+    df.loc[df.new_option.array, 'hourly_profit'] = 0.
     df['running_profit'] = df['hourly_profit'].cumsum()
 
     return df

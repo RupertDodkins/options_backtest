@@ -291,11 +291,13 @@ class StrategyBase():
                 offsets['exps'][leg] = pd.to_datetime(available_expirations[closest_ind])
                 strikes = self.qbw.get_available_strikes(candle['date'], offsets['exps'][leg], leg.contract[0])
 
-            if len(strikes) == 0:  # use previous in the case of misssing data
+            if len(strikes) == 0:  # use previous in the case of missing data
                 offsets['exps'][leg] = prev_offsets['exps'][leg]
                 strikes = prev_offsets['strikes'][leg]
 
             offsets['strikes'][leg] = strikes[np.argmin(np.abs(strikes - candle[f'{leg}_strike']))]
+            if len(strikes) == 0:
+                print('lol')
             if self.force_strike_diff and leg.trans == 'buy' and offsets['strikes'][leg] == offsets['strikes'][prev_leg]:
                 offsets['strikes'][leg] = strikes[strikes > offsets['strikes'][leg]].min() if leg.contract == 'call' else strikes[strikes < offsets['strikes'][leg]].max()
             prev_leg = leg
@@ -359,9 +361,11 @@ class LongPuts():
         return open['value']['option value'], close['value']['option value']
 
 def add_expirations(df, expiration='week'):
+    assert len(df) > 0, 'df shouldnt be empty'
     df['date'] = df.index if is_datetime(df.index) else pd.to_datetime(df.index)
     df = df.reset_index(drop=True)
-    df['week'] = df['date'].dt.week
+    # df['week'] = df['date'].dt.week
+    df['week'] = df['date'].dt.isocalendar().week
     df['year'] = df['date'].dt.year
     if expiration == 'month':
         df['month'] = df['week'] // 4
@@ -376,6 +380,7 @@ def add_expirations(df, expiration='week'):
 
 def measure_period_profit(df, strategy, expiration='week', update_freq='candle', poc_window=0,
                           combine_legs=False, split_correct=(2022, 8, 25, 10, 0), skip_hours=None):
+    assert len(df) > 0, 'df shouldnt be empty'
     df = df.rename(columns={'open': 'underlying_open', 'high': 'underlying_high',
                             'low': 'underlying_low', 'close': 'underlying_close'})
     df['strategy_open'] = 0
@@ -427,6 +432,8 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
         if df.loc[ih]['new_option']:
             stop_loss_met, stop_gain_met = False, False
             option_start = ih
+            if ih == 0:
+                print('lol')
             offsets = strategy.candle_realized_offsets(df.loc[ih], guide, offsets)
             # np.array of list allows single leg strats to populate df
             df.loc[ih, [f'{l.name}_exp' for l in strategy.legs]] = np.array([offsets['exps'][leg] for leg in strategy.legs])

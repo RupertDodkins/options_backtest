@@ -21,6 +21,7 @@ class QuantBook():
             split_correct = format_dates(split_correct)
 
         tsla = load_tsla_hourly()
+        tsla.index = np.array([date.strip() for date in tsla.index])
         tsla.index = pd.to_datetime(tsla.index)
 
         if isinstance(keys, Equity):
@@ -39,7 +40,7 @@ class QuantBook():
         elif isinstance(keys, Contract):
             start, expiration, res = args
             assert res == 'h'
-            start, expiry = format_dates(start, expiration)
+            start, expiration = format_dates(start, expiration)
             tsla = tsla[start:expiration]
             tsla[['bidopen', 'bidhigh', 'bidlow', 'bidclose', 'askopen', 'askhigh', 'asklow', 'askclose']] = 0.
             for index, row in tsla.iterrows():
@@ -48,7 +49,7 @@ class QuantBook():
                     underlying_ohlc *= 3
                 ohlc = black_scholes(underlying_ohlc, keys.ID.StrikePrice,
                                    (expiration-index)/pd.Timedelta(1.0, unit='D'), r=3, sigma=53, right=keys.ID.OptionRight)
-                tsla.loc[index][['open', 'high', 'low', 'close']] = ohlc
+                tsla.loc[index, ['open', 'high', 'low', 'close']] = ohlc
                 tsla.loc[index, ['bidopen', 'bidhigh', 'bidlow', 'bidclose']] = ohlc
                 tsla.loc[index, ['askopen', 'askhigh', 'asklow', 'askclose']] = ohlc
             tsla['expiry'] = expiration
@@ -74,6 +75,7 @@ class Securities():
 class OptionChainProvider():
     def __init__(self):
         self.tsla_underlying = load_tsla_hourly()['open']
+        self.tsla_underlying.index = np.array([date.strip() for date in self.tsla_underlying.index])
         self.tsla_underlying.index = pd.to_datetime(self.tsla_underlying.index)
 
     def GetOptionContractList(self, symbol, start, weeks_out=4, strikes_out=15, strike_sep_factor=50,

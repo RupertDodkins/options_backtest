@@ -68,6 +68,8 @@ class QuantBookWrapper():
         start, expiry = format_dates(start, expiry)
         expiry = expiry.replace(hour=0, minute=0)
         start = start.replace(hour=0, minute=0)
+        if start.replace(hour=0, minute=0) == expiry:
+            start -= timedelta(days=1)
         contract_symbols = self.get_contract_symbols(start)
 
         right = self.OptionRight.Call if right_abrev == 'c' else self.OptionRight.Put

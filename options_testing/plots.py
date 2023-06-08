@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
+import plotly.io as pio
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -22,8 +23,16 @@ def update_fig(fig, pivots=[], show_afterhours=True, log_y=False):
         )
         fig.update_layout(
             title='Stock Analysis',
-            yaxis_title=f'TSLA Stock'
+            yaxis_title=f'TSLA Stock',
+            legend=dict(
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                orientation='h',
+            )
         )
+                
 
     fig.update_layout(xaxis_rangeslider_visible=False)
     fig.show()
@@ -128,16 +137,19 @@ def plot_candles_and_profit(strategy_df, lines=['strike'], metrics=['running_pro
     fig.add_trace(go.Candlestick(x=index, open=strategy_df[value[0]], high=strategy_df[value[1]],
                                  low=strategy_df[value[2]], close=strategy_df[value[3]], showlegend=False),
                   secondary_y=False)
-    if len(lines):
-        for line in lines:
-            fig.add_scatter(x=index, y=strategy_df[line], name=line)
 
     fig.update_yaxes(title_text="TSLA price", secondary_y=False)
     for metric in metrics:
         fig.add_trace(go.Scatter(x=index, y=strategy_df[metric], name=metric),
                     secondary_y=True)
         fig.update_yaxes(title_text=metric, secondary_y=True)
+
+    if len(lines):
+        for line in lines:
+            fig.add_scatter(x=index, y=strategy_df[line], name=line)
+            
     update_fig(fig, show_afterhours=show_afterhours)
+    return fig
 
 def scatter_heatmap(x, y, corner=True, colorscheme='time'):
     if corner:

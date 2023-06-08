@@ -67,6 +67,9 @@ Do feature classifier on several TA metrics
 
 Reinforcement learning
 
+Add various performance metrics like total return, annualized return, max drawdown, and Sharpe ratio, which are presented in a clear, understandable format
+Information Ratio = (Portfolio Return - Benchmark Return) / Tracking Error
+Here, the Tracking Error is the standard deviation of the active returns.
 
 conda activate stocks
 lean cloud push --project '/Users/dodkins/PythonProjects/stocks/options_testing'  -- does this work

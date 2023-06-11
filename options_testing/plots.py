@@ -28,7 +28,7 @@ def update_fig(fig, pivots=[], show_afterhours=True, log_y=False):
                 yanchor="bottom",
                 y=1.02,
                 xanchor="right",
-                x=1,
+                x=0.9,
                 orientation='h',
             )
         )
@@ -129,25 +129,44 @@ def plot_KDE(df, pkx, pky, xr, kdy):
     fig.add_trace(go.Scatter(name="Peaks", x=pkx, y=pky, mode='markers', marker=pk_marker_args))
     fig.show()
 
-def plot_candles_and_profit(strategy_df, lines=['strike'], metrics=['running_profit'], show_afterhours=False):
+def plot_candles_and_profit(strategy_df, lines=['strike'], metrics=['running_profit_$'], show_afterhours=False, show_entries=True,
+                            show_exits=True):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     index = strategy_df['date'] if 'date' in strategy_df.columns else strategy_df.index
     value = ['underlying_open', 'underlying_high', 'underlying_low', 'underlying_close']
 
-    fig.add_trace(go.Candlestick(x=index, open=strategy_df[value[0]], high=strategy_df[value[1]],
-                                 low=strategy_df[value[2]], close=strategy_df[value[3]], showlegend=False),
-                  secondary_y=False)
+    if len(lines):
+        for line in lines:
+            fig.add_scatter(x=index, y=strategy_df[line], name=line, line=dict(dash='dash'))
 
     fig.update_yaxes(title_text="TSLA price", secondary_y=False)
     for metric in metrics:
         fig.add_trace(go.Scatter(x=index, y=strategy_df[metric], name=metric),
                     secondary_y=True)
-        fig.update_yaxes(title_text=metric, secondary_y=True)
+        fig.update_yaxes(title_text=metric.replace('_', ' '), secondary_y=True)
 
-    if len(lines):
-        for line in lines:
-            fig.add_scatter(x=index, y=strategy_df[line], name=line)
-            
+    fig.add_trace(go.Candlestick(x=index, open=strategy_df[value[0]], high=strategy_df[value[1]],
+                                 low=strategy_df[value[2]], close=strategy_df[value[3]], showlegend=False),
+                  secondary_y=False)
+
+
+    # Add entry and exit markers
+    if show_entries and 'new_option' in strategy_df.columns:
+        entry_indices = np.where(strategy_df['new_option'])[0]
+        entry_dates = index[entry_indices]
+        entry_values = strategy_df['underlying_high'][entry_indices] * 1.05
+        fig.add_trace(go.Scatter(x=entry_dates, y=entry_values, mode='markers',
+                                 marker=dict(symbol='triangle-down', color='purple', size=8),
+                                 name='Entry'))
+
+    if show_exits and 'dte' in strategy_df.columns:
+        exit_indices = np.where(strategy_df['dte'] == 0.0)[0]
+        exit_dates = index[exit_indices]
+        exit_values = strategy_df['underlying_low'][exit_indices] /1.05
+        fig.add_trace(go.Scatter(x=exit_dates, y=exit_values, mode='markers',
+                                 marker=dict(symbol='triangle-up', color='orange', size=8),
+                                 name='Exit'))
+
     update_fig(fig, show_afterhours=show_afterhours)
     return fig
 

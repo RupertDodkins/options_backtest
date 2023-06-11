@@ -4,6 +4,7 @@ __pycache__/
 **/*.ipynb_checkpoints/
 .ipynb_checkpoints/
 *.pyc
+TODO.md
 data/*
 src/options_backtest/qc_greeks.py
 src/options_backtest/robinhood.py

@@ -385,7 +385,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
                             'low': 'underlying_low', 'close': 'underlying_close'})
     df['strategy_open'] = 0
     df['strategy_close'] = 0
-    df['hourly_profit'] = 0
+    df['hourly_profit_$'] = 0
     df, g = add_expirations(df, expiration=expiration)
 
     if update_freq == 'candle':
@@ -473,10 +473,11 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
             # if stop_gain_met:
             #     print(ih, df.loc[ih, 'date'], 'stop_gain_met', df.at[ih, 'strategy_close'], df.at[ih, 'stop_gain'])
 
-    df['hourly_profit'] = -df['strategy_close'].diff()
-    # df['hourly_profit'][df['new_option']] = df['strategy_open'] - df['strategy_close']
-    # df.loc[df.new_option.array, 'hourly_profit'] = df['prev_strat_end'] + df['strategy_open'] - df['strategy_close']  # e.g. $10 at open -> $7 at close, would be $3 gain
-    df.loc[df.new_option.array, 'hourly_profit'] = 0.
-    df['running_profit'] = df['hourly_profit'].cumsum()
+    df['hourly_profit_$'] = -df['strategy_close'].diff()
+    # df['hourly_profit_$'][df['new_option']] = df['strategy_open'] - df['strategy_close']
+    # df.loc[df.new_option.array, 'hourly_profit_$'] = df['prev_strat_end'] + df['strategy_open'] - df['strategy_close']  # e.g. $10 at open -> $7 at close, would be $3 gain
+    df.loc[df.new_option.array, 'hourly_profit_$'] = 0.
+    df['hourly_profit_$'] *= 100  # convert to 100 contracts
+    df['running_profit_$'] = df['hourly_profit_$'].cumsum()
 
     return df

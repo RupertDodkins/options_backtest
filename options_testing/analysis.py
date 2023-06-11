@@ -4,7 +4,7 @@ from plots import scatter_heatmap
 
 def movement_vs_profit(df):
     df['movement'] = (df['underlying_close'] - df['underlying_open'])
-    if len(df['movement'][df['hourly_profit'].notna()]) < len(df['movement']):
-        print('dropping rows with nans in hourly_profit')
-    scatter_heatmap(df['movement'][df['hourly_profit'].notna()].array,
-                    df['hourly_profit'][df['hourly_profit'].notna()])
+    if len(df['movement'][df['hourly_profit_$'].notna()]) < len(df['movement']):
+        print('dropping rows with nans in hourly_profit_$')
+    scatter_heatmap(df['movement'][df['hourly_profit_$'].notna()].array,
+                    df['hourly_profit_$'][df['hourly_profit_$'].notna()])

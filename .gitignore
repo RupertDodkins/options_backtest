@@ -5,3 +5,6 @@ __pycache__/
 .ipynb_checkpoints/
 *.pyc
 data/*
+options_testing/qc_greeks.py
+options_testing/robinhood.py
+options_testing/yahoo.py

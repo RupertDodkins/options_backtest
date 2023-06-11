@@ -44,6 +44,7 @@ strat = StrategyBase(qbw=qbw, legs=legs)
 ic = measure_period_profit(tsla,  strat)
 plots.plot_candles_and_profit(ic, lines=[f'{l.name}_strike' for l in strat.legs])
 ```
+![Alt Text](images/CC.png)
 
 ## License
 GNU Affero General Public License

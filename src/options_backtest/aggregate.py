@@ -2,8 +2,8 @@ import numpy as np
 from datetime import datetime, timedelta, date
 import random
 
-from strategies import measure_period_profit
-import plots
+from options_backtest.strategies import measure_period_profit
+import options_backtest.plots as plots
 
 def grid_search_strategy(strategy, df, offsets):
     offset_results = []

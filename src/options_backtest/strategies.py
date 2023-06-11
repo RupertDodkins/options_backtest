@@ -7,8 +7,8 @@ try:
 except ImportError:
     print('No opstrat module found. Wont be able to use BS model')
 import numpy as np
-from technical_analysis import get_poc
-from utils import aggregate, concat_dfs, get_start_price, format_dates, colfix
+from options_backtest.technical_analysis import get_poc
+from options_backtest.utils import aggregate, concat_dfs, get_start_price, format_dates, colfix
 
 
 def get_option_history(spot_history, strike, expiration, volatility=53, risk_free=3.2, option_type='c'):
@@ -296,8 +296,6 @@ class StrategyBase():
                 strikes = prev_offsets['strikes'][leg]
 
             offsets['strikes'][leg] = strikes[np.argmin(np.abs(strikes - candle[f'{leg}_strike']))]
-            if len(strikes) == 0:
-                print('lol')
             if self.force_strike_diff and leg.trans == 'buy' and offsets['strikes'][leg] == offsets['strikes'][prev_leg]:
                 offsets['strikes'][leg] = strikes[strikes > offsets['strikes'][leg]].min() if leg.contract == 'call' else strikes[strikes < offsets['strikes'][leg]].max()
             prev_leg = leg
@@ -432,8 +430,6 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
         if df.loc[ih]['new_option']:
             stop_loss_met, stop_gain_met = False, False
             option_start = ih
-            if ih == 0:
-                print('lol')
             offsets = strategy.candle_realized_offsets(df.loc[ih], guide, offsets)
             # np.array of list allows single leg strats to populate df
             df.loc[ih, [f'{l.name}_exp' for l in strategy.legs]] = np.array([offsets['exps'][leg] for leg in strategy.legs])
@@ -449,7 +445,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
             strat_prices = strategy.candle_profit(df.loc[ih], combine_legs=True)
             df.at[ih, 'prev_strat_end'], df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strat_prices
         else:
-            # print(ih, df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'lol')
+            # print(ih, df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'abc')
             strat_prices = strategy.candle_profit(df.loc[ih], combine_legs=False)
             prev_strat_end, legs_open, legs_close = strat_prices
             df.at[ih, 'prev_strat_end'] = np.sum(prev_strat_end)

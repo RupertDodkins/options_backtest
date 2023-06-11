@@ -4,8 +4,8 @@ from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from datetime import datetime, timedelta
 import copy
 
-from quantconnect import load_tsla_hourly
-from utils import format_dates, black_scholes
+from options_backtest.quantconnect import load_tsla_hourly
+from options_backtest.utils import format_dates, black_scholes
 
 class QuantBook():
     def __init__(self):
@@ -34,7 +34,7 @@ class QuantBook():
             else:
                 raise NotImplementedError
             assert res == 'h'
-            tsla['symbol'] = 'lol'
+            tsla['symbol'] = 'abc'
             tsla['time'] = tsla.index
             tsla.set_index(['symbol', 'time'], inplace=True)
         elif isinstance(keys, Contract):
@@ -55,7 +55,7 @@ class QuantBook():
             tsla['expiry'] = expiration
             tsla['strike'] = keys.ID.StrikePrice
             tsla['type'] = keys.ID.OptionRight
-            tsla['symbol'] = 'lol'
+            tsla['symbol'] = 'abc'
             tsla['time'] = tsla.index
             tsla.set_index(['expiry', 'strike', 'type', 'symbol', 'time'], inplace=True)
         else:

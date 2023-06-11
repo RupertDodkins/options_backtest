@@ -3,8 +3,9 @@ import numpy as np
 import os
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
-from plots import scatter_heatmap
-from utils import format_dates
+
+from options_backtest.plots import scatter_heatmap
+from options_backtest.utils import format_dates
 
 class QuantBookWrapper():
     def __init__(self, qc_vars=None):
@@ -120,7 +121,7 @@ class QuantBookWrapper():
 
 def load_tsla_minutely(data_dir=None, suffix=None):
     if not data_dir:
-        data_dir = '/Users/dodkins/PythonProjects/stocks/options_testing/data/'
+        data_dir = '../data/'
     if not suffix:
         suffix = 'tsla_minutely_'
     tsla = pd.DataFrame(columns=['date', 'open','close'])
@@ -131,12 +132,12 @@ def load_tsla_minutely(data_dir=None, suffix=None):
     return tsla
 
 def load_tsla_hourly(data_dir=None, suffix=None):
-    df_loc = '/Users/dodkins/PythonProjects/stocks/options_testing/data/tsla_hourly_2010+'
+    df_loc = '../data/tsla_hourly_2010+'
     if os.path.exists(df_loc):
         tsla = pd.read_csv(df_loc, index_col='datetime')
     else:
         if not data_dir:
-            data_dir = '/Users/dodkins/PythonProjects/stocks/options_testing/data/'
+            data_dir = '../data/'
         if not suffix:
             suffix = 'tsla_hourly_'
         cols = ['datetime', 'open', 'high', 'low', 'close', 'volume']

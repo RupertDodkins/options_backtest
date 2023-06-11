@@ -4,8 +4,9 @@ import plotly.express as px
 import plotly.io as pio
 import matplotlib.pyplot as plt
 import numpy as np
+from IPython.display import display, Image
 
-def update_fig(fig, pivots=[], show_afterhours=True, log_y=False):
+def update_fig(fig, pivots=[], show_afterhours=True, log_y=False, dynamic=False):
     if log_y:
         fig.update_yaxes(type="log")
     for y in pivots:
@@ -24,6 +25,7 @@ def update_fig(fig, pivots=[], show_afterhours=True, log_y=False):
         fig.update_layout(
             title='Stock Analysis',
             yaxis_title=f'TSLA Stock',
+            width=1400, height=600,
             legend=dict(
                 yanchor="bottom",
                 y=1.02,
@@ -35,7 +37,12 @@ def update_fig(fig, pivots=[], show_afterhours=True, log_y=False):
                 
 
     fig.update_layout(xaxis_rangeslider_visible=False)
-    fig.show()
+    
+    if dynamic:
+        fig.show()
+    else:
+        image_bytes = fig.to_image(format='png')
+        display(Image(image_bytes))
 
 def plot(df, value=None, show_afterhours=True, log_y=False):
     ohlc = ['open', 'high', 'low', 'close']

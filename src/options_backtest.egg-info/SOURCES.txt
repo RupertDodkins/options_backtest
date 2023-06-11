@@ -1,0 +1,45 @@
+.gitignore
+LICENSE
+README.md
+__init__.py
+requirements.txt
+setup.py
+notebooks/BS_model_tests.ipynb
+notebooks/CS_montecarlo.ipynb
+notebooks/IC_montecarlo.ipynb
+notebooks/IC_montecarlo_QC.ipynb
+notebooks/PMCC.ipynb
+notebooks/PMCC_dynamic-hourly.ipynb
+notebooks/PMCC_dynamic.ipynb
+notebooks/RH_transactions.ipynb
+notebooks/cal_spreads copy 2.ipynb
+notebooks/cal_spreads copy 3.ipynb
+notebooks/cal_spreads copy 4.ipynb
+notebooks/cal_spreads copy.ipynb
+notebooks/cal_spreads.ipynb
+notebooks/greeks_from_QC-backtest.ipynb
+notebooks/introduction.ipynb
+notebooks/iron_condors.ipynb
+notebooks/option_history.ipynb
+notebooks/quant_connect_sim.ipynb
+notebooks/tsla_history.ipynb
+notebooks/tsla_iron_condors.ipynb
+notebooks/.ipynb_checkpoints/RH_transactions-checkpoint.ipynb
+notebooks/.ipynb_checkpoints/tsla_history-checkpoint.ipynb
+src/options_backtest/__init__.py
+src/options_backtest/aggregate.py
+src/options_backtest/analysis.py
+src/options_backtest/plots.py
+src/options_backtest/qc_greeks.py
+src/options_backtest/qc_simulator.py
+src/options_backtest/quantconnect.py
+src/options_backtest/robinhood.py
+src/options_backtest/strategies.py
+src/options_backtest/technical_analysis.py
+src/options_backtest/utils.py
+src/options_backtest/yahoo.py
+src/options_backtest.egg-info/PKG-INFO
+src/options_backtest.egg-info/SOURCES.txt
+src/options_backtest.egg-info/dependency_links.txt
+src/options_backtest.egg-info/requires.txt
+src/options_backtest.egg-info/top_level.txt

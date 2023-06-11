@@ -1,8 +1,12 @@
-# Installation
+# Options Backtest
+
+A tool to implement and backtest options strategies on simulated or historical data using QuantConnect
+
+## Installation
 
 `pip install -e .`
 
-# Linking to QuantConnect
+## Linking to QuantConnect
 Based of these instructions
 https://www.quantconnect.com/docs/v2/lean-cli/projects/libraries/project-libraries
 
@@ -13,14 +17,31 @@ cp /Users/username/options_backtest/src/options_backtest/* ./Library/optionsback
 lean library add 'Backtest 20230601' 'Library/optionsbacktest'
 ```
 
-## Remote -> local
+### Remote -> local
 ```
 lean cloud pull --project 'Backtest 20230601'
 cp ./Library/optionsbacktest /Users/username/options_backtest/src/options_backtest/*
 ```
 
-## local -> remote
+### local -> remote
 ```
 cp /Users/username/options_backtest/src/options_backtest/* ./Library/optionsbacktest
 lean cloud push --project 'Backtest 20230601'
 ```
+
+## Usage
+
+```
+from options_backtest.qc_simulator import QuantBook, Resolution, OptionRight
+import options_backtest.quantconnect as qc
+
+qbw = qc.QuantBookWrapper({'qb':QuantBook(),'Resolution':Resolution,'OptionRight':OptionRight})
+tsla = qbw.get_tsla(nbars)
+legs = [LegMeta(trans='sell', contract='call', strike_offset= 15, exp_offset= 0),]  
+strat = StrategyBase(qbw=qbw, legs=legs)
+ic = measure_period_profit(tsla,  strat)
+plots.plot_candles_and_profit(ic, lines=[f'{l.name}_strike' for l in strat.legs])
+```
+
+## License
+GNU Affero General Public License

@@ -8,3 +8,4 @@ data/*
 src/options_backtest/qc_greeks.py
 src/options_backtest/robinhood.py
 src/options_backtest/yahoo.py
+notebooks

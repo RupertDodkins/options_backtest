@@ -23,15 +23,18 @@ def update_fig(fig, pivots=[], show_afterhours=True, log_y=False, dynamic=False)
             ]
         )
         fig.update_layout(
-            title='Stock Analysis',
+            title='',
             yaxis_title=f'TSLA Stock',
             width=1400, height=600,
             legend=dict(
                 yanchor="bottom",
                 y=1.02,
                 xanchor="right",
-                x=0.9,
+                x=0.95,
                 orientation='h',
+            ),
+            font=dict(
+                size=18
             )
         )
                 

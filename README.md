@@ -2,6 +2,8 @@
 
 A tool to implement and backtest options strategies on simulated or historical data using QuantConnect
 
+![Alt Text](images/logo_wide2.png)
+
 ## Installation
 
 `pip install -e .`

@@ -1,3 +1,4 @@
 plotly>=5.4.0
 scipy>=1.7.2
 kaleido>=0.2.1
+pytest>=7.3.2

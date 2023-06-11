@@ -1,19 +1,26 @@
+# Installation
 
-conda activate stocks
-lean cloud push --project '/Users/dodkins/PythonProjects/stocks/options_testing'  -- does this work
+`pip install -e .`
 
-# Initial setup
-I had some success using this
+# Linking to QuantConnect
+Based of these instructions
 https://www.quantconnect.com/docs/v2/lean-cli/projects/libraries/project-libraries
-cd /Users/dodkins/PythonProjects/stocks/RupeDogIndustries
-lean project-create "Library/optionstesting" --language python
-cp /Users/dodkins/PythonProjects/stocks/options_testing/options_testing/* ./Library/optionstesting ## can't have an underscore in the name on quantconnect
-lean library add 'Tesla LEAPS' 'Library/optionstesting'
 
-# Remote -> local
-lean cloud pull --project 'Tesla LEAPS'
-cp ./Library/optionstesting /Users/dodkins/PythonProjects/stocks/options_testing/options_testing/*
+```
+cd /Users/username/options_backtest
+lean project-create "Library/optionsbacktest" --language python # can't have an underscore in the name on quantconnect
+cp /Users/username/options_backtest/src/options_backtest/* ./Library/optionsbacktest 
+lean library add 'Backtest 20230601' 'Library/optionsbacktest'
+```
 
-# local -> remote
-cp /Users/dodkins/PythonProjects/stocks/options_testing/options_testing/* ./Library/optionstesting
-lean cloud push --project 'Tesla LEAPS'
+## Remote -> local
+```
+lean cloud pull --project 'Backtest 20230601'
+cp ./Library/optionsbacktest /Users/username/options_backtest/src/options_backtest/*
+```
+
+## local -> remote
+```
+cp /Users/username/options_backtest/src/options_backtest/* ./Library/optionsbacktest
+lean cloud push --project 'Backtest 20230601'
+```

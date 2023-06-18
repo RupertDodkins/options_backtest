@@ -28,6 +28,7 @@ cp ./Library/optionsbacktest /Users/username/options_backtest/src/options_backte
 ### local -> remote
 ```
 cp /Users/username/options_backtest/src/options_backtest/* ./Library/optionsbacktest
+lean library add "Backtest 20230601" "Library/optionstesting"
 lean cloud push --project 'Backtest 20230601'
 ```
 

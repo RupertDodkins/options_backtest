@@ -418,7 +418,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
         if skip_hours is not None:
             skip_met = df.at[ih, 'dte']*24. <= skip_hours[1]
             if skip_met:
-                df.iloc[ih] = df.iloc[ih-1]
+                df.loc[ih, ['strategy_open', 'strategy_close']] = df.loc[ih-1, ['strategy_open', 'strategy_close']]
                 df.at[ih, 'early_stop'] = 'user skip'
                 continue
         if (stop_loss_met or stop_gain_met) and df.loc[ih-1, 'dte'] > 1.:
@@ -445,7 +445,7 @@ def measure_period_profit(df, strategy, expiration='week', update_freq='candle',
             strat_prices = strategy.candle_profit(df.loc[ih], combine_legs=True)
             df.at[ih, 'prev_strat_end'], df.at[ih, 'strategy_open'], df.at[ih, 'strategy_close'] = strat_prices
         else:
-            # print(ih, df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'abc')
+            # print(ih, df.loc[ih, ['date', 'dte', 'new_option', 'early_stop', 'stop_gain']], 'lol')
             strat_prices = strategy.candle_profit(df.loc[ih], combine_legs=False)
             prev_strat_end, legs_open, legs_close = strat_prices
             df.at[ih, 'prev_strat_end'] = np.sum(prev_strat_end)

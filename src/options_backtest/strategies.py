@@ -255,7 +255,7 @@ class LegMeta():
 
 
 class StrategyBase():
-    def __init__(self, legs=None, qbw=None, stop_loss=None, stop_gain=None, force_strike_diff=False, split_correct=(2022, 8, 25, 10, 0),
+    def __init__(self, legs=None, qbw=None, stop_loss=None, stop_gain=None, force_strike_diff=True, split_correct=(2022, 8, 25, 10, 0),
         new_option_risk=False
     ):
         if not legs:

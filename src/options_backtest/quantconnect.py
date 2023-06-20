@@ -4,31 +4,32 @@ import os
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
-from options_backtest.plots import scatter_heatmap
-from options_backtest.utils import format_dates
+from plots import scatter_heatmap
+from utils import format_dates
 
 class QuantBookWrapper():
-    def __init__(self, qc_vars=None):
-        if not qc_vars:
-            self.qb = QuantBook()
-            self.Resolution = Resolution
-            self.OptionRight = OptionRight
+    def __init__(self, locals, ticker='TSLA'):
+        if 'Resolution' in locals.keys():
+            QuantBook = locals['QuantBook']
+            Resolution = locals['Resolution']
+            OptionRight = locals['OptionRight']
         else:
-            self.qb = qc_vars['qb']
-            self.Resolution = qc_vars['Resolution']
-            self.OptionRight = qc_vars['OptionRight']
-        tsla_equity = self.qb.AddEquity("TSLA")
-        self.equity_symbol = tsla_equity.Symbol
+            from qc_simulator import QuantBook, Resolution, OptionRight
+        self.qb = QuantBook()
+        self.Resolution = Resolution
+        self.OptionRight = OptionRight
+        equity = self.qb.AddEquity(ticker)
+        self.equity_symbol = equity.Symbol
 
-    def get_tsla(self, nbars=200, start=None, end=None):
+    def get_stock_history(self, nbars=200, start=None, end=None):
         if start and end:
-            tsla = self.qb.History(self.qb.Securities.Keys, start, end, self.Resolution.Hour)
+            stock_history = self.qb.History(self.qb.Securities.Keys, start, end, self.Resolution.Hour)
         else:    
-            tsla = self.qb.History(self.qb.Securities.Keys, nbars, self.Resolution.Hour)
-        tsla = tsla.reset_index(level=[0])
-        tsla = tsla.drop(['symbol'], axis=1)
-        tsla = tsla[tsla.index <= datetime.today().replace(hour=16, minute=0) - timedelta(days=3)]
-        return tsla
+            stock_history = self.qb.History(self.qb.Securities.Keys, nbars, self.Resolution.Hour)
+        stock_history = stock_history.reset_index(level=[0])
+        stock_history = stock_history.drop(['symbol'], axis=1)
+        stock_history = stock_history[stock_history.index <= datetime.today().replace(hour=16, minute=0) - timedelta(days=3)]
+        return stock_history
 
     def get_available_strikes(self, start=(2022, 8, 25), expiration=(2022, 10, 14), right_abrev='c',
                               split_correct=(2022, 8, 25)):

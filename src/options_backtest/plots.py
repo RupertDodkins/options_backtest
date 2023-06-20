@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from IPython.display import display, Image
 
-def update_fig(fig, pivots=[], show_afterhours=True, log_y=False, dynamic=False):
+def update_fig(fig, pivots=[], show_afterhours=True, log_y=False, dynamic=True):
     if log_y:
         fig.update_yaxes(type="log")
     for y in pivots:
@@ -140,7 +140,7 @@ def plot_KDE(df, pkx, pky, xr, kdy):
     fig.show()
 
 def plot_candles_and_profit(strategy_df, lines=['strike'], metrics=['running_profit_$'], show_afterhours=False, show_entries=True,
-                            show_exits=True):
+                            show_exits=True, dynamic=True):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     index = strategy_df['date'] if 'date' in strategy_df.columns else strategy_df.index
     value = ['underlying_open', 'underlying_high', 'underlying_low', 'underlying_close']
@@ -177,7 +177,7 @@ def plot_candles_and_profit(strategy_df, lines=['strike'], metrics=['running_pro
                                  marker=dict(symbol='triangle-up', color='orange', size=8),
                                  name='Exit'))
 
-    update_fig(fig, show_afterhours=show_afterhours)
+    update_fig(fig, show_afterhours=show_afterhours, dynamic=dynamic)
     return fig
 
 def scatter_heatmap(x, y, corner=True, colorscheme='time'):

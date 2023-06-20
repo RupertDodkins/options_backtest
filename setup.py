@@ -8,8 +8,8 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url="https://github.com/RupertDodkins/options_backtest/",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_packages(where="src/options_backtest"),
+    package_dir={"": "src/options_backtest"},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",

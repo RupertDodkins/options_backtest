@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, date
 import random
 import matplotlib.pyplot as plt
 
-from options_backtest.strategies import measure_period_profit, LegMeta, StrategyBase
-import options_backtest.plots as plots
+from strategies import measure_period_profit, LegMeta, StrategyBase
+import plots as plots
 
 def grid_search_strategy(strategy, df, offsets):
     offset_results = []

@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from options_backtest.plots import scatter_heatmap
+from plots import scatter_heatmap
 
 def movement_vs_profit(df):
     df['movement'] = (df['underlying_close'] - df['underlying_open'])

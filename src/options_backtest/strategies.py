@@ -7,8 +7,8 @@ try:
 except ImportError:
     print('No opstrat module found. Wont be able to use BS model')
 import numpy as np
-from options_backtest.technical_analysis import get_poc
-from options_backtest.utils import aggregate, concat_dfs, get_start_price, format_dates, colfix
+from technical_analysis import get_poc
+from utils import aggregate, concat_dfs, get_start_price, format_dates, colfix
 
 
 def get_option_history(spot_history, strike, expiration, volatility=53, risk_free=3.2, option_type='c'):

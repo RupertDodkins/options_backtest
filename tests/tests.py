@@ -1,8 +1,8 @@
 import unittest
-from options_backtest.qc_simulator import QuantBook, Resolution, OptionRight
-import options_backtest.quantconnect as qc
-from options_backtest.strategies import measure_period_profit, LegMeta, StrategyBase
-import options_backtest.plots as plots
+from qc_simulator import QuantBook, Resolution, OptionRight
+import quantconnect as qc
+from strategies import measure_period_profit, LegMeta, StrategyBase
+import plots as plots
 
 class OptionsBacktestTests(unittest.TestCase):
     def setUp(self):

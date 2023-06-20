@@ -4,8 +4,8 @@ from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from datetime import datetime, timedelta
 import copy
 
-from options_backtest.quantconnect import load_tsla_hourly
-from options_backtest.utils import format_dates, black_scholes
+from quantconnect import load_tsla_hourly
+from utils import format_dates, black_scholes
 
 class QuantBook():
     def __init__(self):
